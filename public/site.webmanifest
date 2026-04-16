@@ -1,0 +1,16 @@
+{
+  "name": "SignalDock",
+  "short_name": "SignalDock",
+  "description": "Hosted mock REST APIs and WebSocket event workspaces for frontend, QA, and demo teams.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f3f1e7",
+  "theme_color": "#12261f",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

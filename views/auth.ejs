@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+  <%- include("partials/head", { meta, structuredData }) %>
+  <body class="min-h-screen bg-base text-ink">
+    <div class="pointer-events-none fixed inset-0 overflow-hidden">
+      <div class="absolute -left-12 top-0 h-64 w-64 rounded-full bg-accent/15 blur-3xl"></div>
+      <div class="absolute right-0 top-40 h-80 w-80 rounded-full bg-amber-300/20 blur-3xl"></div>
+      <div class="dot-grid absolute inset-0 opacity-60"></div>
+    </div>
+
+    <header class="relative z-10 mx-auto max-w-7xl px-6 py-6 lg:px-10">
+      <nav class="flex flex-col gap-4 rounded-[2rem] border border-ink/10 bg-panel/85 px-5 py-4 shadow-card backdrop-blur lg:flex-row lg:items-center lg:justify-between">
+        <div class="flex items-center gap-4">
+          <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-ink text-lg font-bold text-white">SD</div>
+          <div>
+            <p class="font-mono text-xs uppercase tracking-[0.28em] text-ink/45">SignalDock</p>
+            <p class="text-sm text-ink/65">Hosted mock APIs and Socket.IO events</p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3 text-sm text-ink/65">
+          <a class="transition hover:text-ink" href="#features">Features</a>
+          <a class="transition hover:text-ink" href="#workflow">Workflow</a>
+          <a class="transition hover:text-ink" href="#faq">FAQ</a>
+          <a class="inline-flex items-center justify-center rounded-2xl bg-ink px-4 py-2 font-semibold text-white transition hover:bg-ink/90" href="#workspace-access">
+            Open workspace
+          </a>
+        </div>
+      </nav>
+    </header>
+
+    <main class="relative mx-auto max-w-7xl px-6 pb-16 lg:px-10">
+      <section class="grid items-center gap-10 py-8 lg:grid-cols-[1.1fr_0.9fr]">
+        <div class="space-y-8">
+          <div class="inline-flex items-center gap-3 rounded-full border border-ink/10 bg-panel/80 px-4 py-2 text-sm shadow-card backdrop-blur">
+            <span class="h-2 w-2 rounded-full bg-accent"></span>
+            Mock backend flows without waiting on backend delivery
+          </div>
+
+          <div class="space-y-5">
+            <p class="font-mono text-xs uppercase tracking-[0.35em] text-ink/55">Mock API Platform / REST + WebSocket</p>
+            <h1 class="max-w-4xl text-5xl font-bold leading-tight sm:text-6xl">
+              Create hosted mock APIs and live event streams in minutes.
+            </h1>
+            <p class="max-w-2xl text-lg leading-8 text-ink/70">
+              SignalDock gives frontend developers, QA teams, and demo environments a browser-first way to publish mock REST endpoints and Socket.IO events under one clean workspace URL.
+            </p>
+          </div>
+
+          <div class="grid gap-4 sm:grid-cols-3">
+            <article class="rounded-3xl border border-ink/10 bg-panel/80 p-5 shadow-card backdrop-blur">
+              <p class="font-mono text-xs uppercase tracking-[0.28em] text-ink/45">REST</p>
+              <h2 class="mt-3 text-lg font-semibold">Hosted mock endpoints</h2>
+              <p class="mt-2 text-sm leading-6 text-ink/65">Serve public JSON or text responses with status codes, headers, delays, and path params.</p>
+            </article>
+            <article class="rounded-3xl border border-ink/10 bg-panel/80 p-5 shadow-card backdrop-blur">
+              <p class="font-mono text-xs uppercase tracking-[0.28em] text-ink/45">Realtime</p>
+              <h2 class="mt-3 text-lg font-semibold">Socket.IO event mocks</h2>
+              <p class="mt-2 text-sm leading-6 text-ink/65">Trigger namespaced events from the dashboard and keep frontend state machines moving.</p>
+            </article>
+            <article class="rounded-3xl border border-ink/10 bg-panel/80 p-5 shadow-card backdrop-blur">
+              <p class="font-mono text-xs uppercase tracking-[0.28em] text-ink/45">Guardrails</p>
+              <h2 class="mt-3 text-lg font-semibold">Usage analytics and limits</h2>
+              <p class="mt-2 text-sm leading-6 text-ink/65">Track hits, monitor triggers, and automatically block noisy IPs when traffic spikes.</p>
+            </article>
+          </div>
+        </div>
+
+        <section id="workspace-access" class="rounded-[2rem] border border-ink/10 bg-panel/90 p-6 shadow-card backdrop-blur sm:p-8">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <p class="font-mono text-xs uppercase tracking-[0.28em] text-ink/45">Single entry auth</p>
+              <h2 class="mt-3 text-3xl font-semibold">Enter your workspace</h2>
+            </div>
+            <div class="rounded-2xl bg-accentSoft px-4 py-2 text-sm font-medium text-accent">Auto login / signup</div>
+          </div>
+
+          <p class="mt-4 max-w-md text-sm leading-6 text-ink/65">
+            If the username already exists, SignalDock signs you in. If it does not, SignalDock creates the workspace with a hashed password and starts the session immediately.
+          </p>
+
+          <% if (typeof pageError !== "undefined" && pageError) { %>
+            <div class="mt-6 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              <%= pageError %>
+            </div>
+          <% } %>
+
+          <div id="auth-feedback" class="mt-6 hidden rounded-2xl border px-4 py-3 text-sm"></div>
+
+          <form id="auth-form" class="mt-6 space-y-5">
+            <label class="block space-y-2">
+              <span class="text-sm font-medium text-ink/80">Username</span>
+              <input
+                class="w-full rounded-2xl border border-ink/10 bg-white/90 px-4 py-3 outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10"
+                type="text"
+                name="username"
+                autocomplete="username"
+                placeholder="acme-frontend"
+                required
+              />
+              <span class="text-xs text-ink/45">Lowercase slug, 3-32 chars. Your base path becomes `/<span class="font-mono">username</span>`.</span>
+            </label>
+
+            <label class="block space-y-2">
+              <span class="text-sm font-medium text-ink/80">Password</span>
+              <input
+                class="w-full rounded-2xl border border-ink/10 bg-white/90 px-4 py-3 outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10"
+                type="password"
+                name="password"
+                autocomplete="current-password"
+                placeholder="At least 8 characters"
+                required
+              />
+            </label>
+
+            <button
+              type="submit"
+              class="inline-flex w-full items-center justify-center rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-ink/90 focus:outline-none focus:ring-4 focus:ring-ink/10"
+            >
+              Continue to dashboard
+            </button>
+          </form>
+
+          <div class="mt-8 rounded-3xl border border-ink/10 bg-[#f7f3ea] p-5">
+            <p class="font-mono text-xs uppercase tracking-[0.28em] text-ink/45">What you get</p>
+            <ul class="mt-4 space-y-3 text-sm leading-6 text-ink/70">
+              <li>Public base URL per workspace for API and event mocks</li>
+              <li>Dynamic placeholders like `[[UUID]]`, `[[NAME]]`, and `[[NOW_ISO]]`</li>
+              <li>Built-in test tools, hit counters, and temporary IP blocking</li>
+            </ul>
+          </div>
+        </section>
+      </section>
+
+      <section id="features" class="mt-10 grid gap-6 lg:grid-cols-3">
+        <article class="rounded-[2rem] border border-ink/10 bg-white/85 p-6 shadow-card">
+          <p class="font-mono text-xs uppercase tracking-[0.28em] text-ink/45">Mock API Builder</p>
+          <h2 class="mt-4 text-2xl font-semibold">Ship frontend integrations before the backend is ready.</h2>
+          <p class="mt-3 text-sm leading-7 text-ink/68">
+            Define methods, paths, status codes, headers, delays, and templated responses without opening Postman collections or spinning up a local mock server.
+          </p>
+        </article>
+        <article class="rounded-[2rem] border border-ink/10 bg-white/85 p-6 shadow-card">
+          <p class="font-mono text-xs uppercase tracking-[0.28em] text-ink/45">WebSocket Mocking</p>
+          <h2 class="mt-4 text-2xl font-semibold">Model real-time UI states with namespaced events.</h2>
+          <p class="mt-3 text-sm leading-7 text-ink/68">
+            Create Socket.IO namespaces, author payload templates, and manually trigger event broadcasts for notifications, chats, feeds, and order lifecycles.
+          </p>
+        </article>
+        <article class="rounded-[2rem] border border-ink/10 bg-white/85 p-6 shadow-card">
+          <p class="font-mono text-xs uppercase tracking-[0.28em] text-ink/45">Operational Guardrails</p>
+          <h2 class="mt-4 text-2xl font-semibold">Protect shared demo links from accidental abuse.</h2>
+          <p class="mt-3 text-sm leading-7 text-ink/68">
+            SignalDock tracks usage, exposes last-hit activity, and automatically enforces per-IP rate limits with temporary blocks so public mocks stay usable.
+          </p>
+        </article>
+      </section>
+
+      <section id="workflow" class="mt-10 rounded-[2rem] border border-ink/10 bg-panel/90 p-6 shadow-card lg:p-8">
+        <div class="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+          <div>
+            <p class="font-mono text-xs uppercase tracking-[0.28em] text-ink/45">How it works</p>
+            <h2 class="mt-3 text-3xl font-semibold">One workspace for REST mocks, WebSocket events, and quick testing.</h2>
+            <p class="mt-4 max-w-xl text-sm leading-7 text-ink/68">
+              Instead of juggling a local mock server, generated JSON files, and separate event tooling, SignalDock keeps the full contract-testing flow in one dashboard.
+            </p>
+          </div>
+
+          <div class="grid gap-4 sm:grid-cols-3">
+            <article class="rounded-3xl border border-ink/10 bg-white p-5">
+              <p class="font-mono text-xs uppercase tracking-[0.28em] text-accent">01</p>
+              <h3 class="mt-3 text-lg font-semibold">Create</h3>
+              <p class="mt-2 text-sm leading-6 text-ink/65">Add a route or event, then paste a payload template with placeholders.</p>
+            </article>
+            <article class="rounded-3xl border border-ink/10 bg-white p-5">
+              <p class="font-mono text-xs uppercase tracking-[0.28em] text-accent">02</p>
+              <h3 class="mt-3 text-lg font-semibold">Share</h3>
+              <p class="mt-2 text-sm leading-6 text-ink/65">Use the public workspace URL in frontend apps, QA suites, or product demos.</p>
+            </article>
+            <article class="rounded-3xl border border-ink/10 bg-white p-5">
+              <p class="font-mono text-xs uppercase tracking-[0.28em] text-accent">03</p>
+              <h3 class="mt-3 text-lg font-semibold">Observe</h3>
+              <p class="mt-2 text-sm leading-6 text-ink/65">Inspect hit counts, last activity, and block status directly in the dashboard.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="faq" class="mt-10 grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
+        <div>
+          <p class="font-mono text-xs uppercase tracking-[0.28em] text-ink/45">FAQ</p>
+          <h2 class="mt-3 text-3xl font-semibold">Common questions about the mock platform.</h2>
+          <p class="mt-4 max-w-lg text-sm leading-7 text-ink/68">
+            The homepage is optimized to explain what the product does, while the app itself stays focused on fast creation, testing, and event triggering.
+          </p>
+        </div>
+
+        <div class="space-y-4">
+          <details class="rounded-3xl border border-ink/10 bg-white/90 p-5 shadow-card" open>
+            <summary class="cursor-pointer text-lg font-semibold">Who is SignalDock for?</summary>
+            <p class="mt-3 text-sm leading-7 text-ink/68">
+              Frontend developers, QA engineers, mobile teams, demo environments, and integration testers who need hosted mock APIs or mock WebSocket events without backend dependencies.
+            </p>
+          </details>
+          <details class="rounded-3xl border border-ink/10 bg-white/90 p-5 shadow-card">
+            <summary class="cursor-pointer text-lg font-semibold">Does it support dynamic fake data?</summary>
+            <p class="mt-3 text-sm leading-7 text-ink/68">
+              Yes. Response and payload templates support tokens like `[[UUID]]`, `[[NAME]]`, `[[EMAIL]]`, `[[NUMBER_100000_999999]]`, `[[NOW_ISO]]`, and `[[USERNAME]]`.
+            </p>
+          </details>
+          <details class="rounded-3xl border border-ink/10 bg-white/90 p-5 shadow-card">
+            <summary class="cursor-pointer text-lg font-semibold">Can I use it for public demo links?</summary>
+            <p class="mt-3 text-sm leading-7 text-ink/68">
+              That is one of the main use cases. The app exposes public workspace URLs and includes rate limits plus temporary IP blocking to reduce abuse during shared demos.
+            </p>
+          </details>
+        </div>
+      </section>
+    </main>
+
+    <script src="/auth.js" defer></script>
+  </body>
+</html>

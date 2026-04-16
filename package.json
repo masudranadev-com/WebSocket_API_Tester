@@ -1,0 +1,45 @@
+{
+  "name": "signaldock",
+  "version": "0.2.0",
+  "description": "Hosted mock REST API and WebSocket platform built with Express, Socket.IO, SQLite, and Tailwind CSS",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "concurrently -k -n STYLES,SERVER -c cyan,green \"npm:dev:styles\" \"npm:dev:server\"",
+    "dev:server": "node --watch src/server.js",
+    "dev:styles": "tailwindcss -c tailwind.config.cjs -i ./src/styles/tailwind.css -o ./public/assets/styles.css --watch",
+    "build": "npm run build:styles && node scripts/build.mjs",
+    "build:styles": "tailwindcss -c tailwind.config.cjs -i ./src/styles/tailwind.css -o ./public/assets/styles.css --minify",
+    "prestart": "npm run build:styles",
+    "start": "node src/server.js",
+    "preview": "node dist/src/server.js"
+  },
+  "keywords": [
+    "express",
+    "tailwindcss",
+    "mock-api",
+    "mock-server",
+    "socket-io",
+    "sqlite",
+    "websocket"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^11.8.1",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "express-session": "^1.18.1",
+    "helmet": "^8.1.0",
+    "socket.io": "^4.8.1",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "tailwindcss": "^3.4.17"
+  }
+}

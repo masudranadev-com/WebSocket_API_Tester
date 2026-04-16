@@ -1,0 +1,9 @@
+node_modules
+.DS_Store
+.env
+dist
+public/assets/styles.css
+data/*.db
+data/*.db-*
+data/*.sqlite
+data/*.sqlite-*

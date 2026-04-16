@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: "Space Grotesk", sans-serif;
+    text-rendering: optimizeLegibility;
+  }
+}
+
+@layer components {
+  .dashboard-tab {
+    color: rgba(17, 36, 30, 0.6);
+  }
+
+  .dashboard-tab.active {
+    background: #11241e;
+    color: #ffffff;
+  }
+
+  .list-card {
+    border: 1px solid rgba(17, 36, 30, 0.08);
+    background: rgba(255, 255, 255, 0.8);
+    transition:
+      transform 140ms ease,
+      border-color 140ms ease,
+      background 140ms ease;
+  }
+
+  .list-card:hover {
+    transform: translateY(-1px);
+    border-color: rgba(15, 118, 110, 0.25);
+    background: rgba(255, 255, 255, 0.96);
+  }
+
+  .list-card.active {
+    border-color: rgba(15, 118, 110, 0.35);
+    box-shadow: 0 18px 44px rgba(15, 23, 42, 0.08);
+  }
+}
+
+@layer utilities {
+  .dot-grid {
+    background-image: radial-gradient(circle at center, rgba(17, 36, 30, 0.1) 1px, transparent 1px);
+    background-size: 26px 26px;
+    mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.9), transparent 92%);
+  }
+
+  .dashboard-grid {
+    background-image:
+      linear-gradient(rgba(17, 36, 30, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(17, 36, 30, 0.06) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.85), transparent 85%);
+  }
+}
+
+@layer base {
+  pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+}

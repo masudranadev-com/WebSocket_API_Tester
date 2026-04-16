@@ -1,0 +1,25 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#F3F1E7"/>
+  <circle cx="182" cy="131" r="144" fill="#D4F0EA"/>
+  <circle cx="1048" cy="146" r="160" fill="#FFE2C8"/>
+  <circle cx="1040" cy="538" r="210" fill="#D9EEE8"/>
+  <rect x="88" y="86" width="1024" height="458" rx="40" fill="#FFFDF8" stroke="#12261F" stroke-opacity="0.08"/>
+  <rect x="136" y="142" width="84" height="84" rx="24" fill="#12261F"/>
+  <path d="M161 163C161 155.82 166.82 150 174 150H245C252.18 150 258 155.82 258 163V185C258 192.18 252.18 198 245 198H211L190 216V198H174C166.82 198 161 192.18 161 185V163Z" fill="#0F766E"/>
+  <circle cx="188" cy="174" r="7" fill="#FFFDF8"/>
+  <circle cx="204" cy="174" r="7" fill="#FFFDF8"/>
+  <circle cx="220" cy="174" r="7" fill="#FFFDF8"/>
+  <text x="136" y="292" fill="#12261F" font-family="Space Grotesk, Arial, sans-serif" font-size="74" font-weight="700">
+    SignalDock
+  </text>
+  <text x="136" y="356" fill="#12261F" fill-opacity="0.78" font-family="Space Grotesk, Arial, sans-serif" font-size="32">
+    Hosted mock REST APIs and Socket.IO events for frontend teams, QA, demos, and integration testing.
+  </text>
+  <rect x="136" y="410" width="264" height="54" rx="16" fill="#12261F"/>
+  <text x="168" y="445" fill="#FFFDF8" font-family="IBM Plex Mono, monospace" font-size="24">
+    signaldock.dev/mock
+  </text>
+  <text x="136" y="510" fill="#0F766E" font-family="IBM Plex Mono, monospace" font-size="24">
+    REST + WebSocket + Analytics + Rate Limits
+  </text>
+</svg>
