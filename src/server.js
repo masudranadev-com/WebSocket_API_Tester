@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import http from "node:http";
+import { fileURLToPath } from "node:url";
 import bcrypt from "bcryptjs";
 import express from "express";
 import session from "express-session";
@@ -44,8 +45,8 @@ const sessionSecret = process.env.SESSION_SECRET || "signaldock-dev-secret";
 const isProduction = process.env.NODE_ENV === "production";
 const limiter = createRateLimiter(database);
 const authAttempts = new Map();
-const publicDir = new URL("../public", import.meta.url).pathname;
-const publicAssetsDir = new URL("../public/assets", import.meta.url).pathname;
+const publicDir = fileURLToPath(new URL("../public", import.meta.url));
+const publicAssetsDir = fileURLToPath(new URL("../public/assets", import.meta.url));
 
 const authSchema = z.object({
   username: z
@@ -87,7 +88,7 @@ const wsEventSchema = z.object({
 
 app.disable("x-powered-by");
 app.set("view engine", "ejs");
-app.set("views", new URL("../views", import.meta.url).pathname);
+app.set("views", fileURLToPath(new URL("../views", import.meta.url)));
 app.set("trust proxy", 1);
 
 app.use((req, res, next) => {
