@@ -17,7 +17,7 @@ SignalDock is a multi-tenant mock platform for teams that need hosted REST endpo
 - Node.js 22+
 - Express
 - Socket.IO
-- SQLite via `better-sqlite3`
+- JSON file-backed persistence
 - EJS
 - Tailwind CSS
 
@@ -93,17 +93,17 @@ Environment variables:
 
 ```text
 .
-├── public/            # Browser assets
-├── scripts/           # Build scripts
-├── src/               # Server, data, and business logic
-├── views/             # EJS templates
-├── dist/              # Production build output
-└── data/              # SQLite database files created at runtime
+|-- public/            # Browser assets
+|-- scripts/           # Build scripts
+|-- src/               # Server, data, and business logic
+|-- views/             # EJS templates
+|-- dist/              # Production build output
+`-- data/              # Runtime JSON data created at runtime
 ```
 
 ## Notes
 
-- Runtime data is stored in `data/signaldock.db`.
+- Runtime data is stored in `data/signaldock.json`.
 - The production bundle keeps runtime data separate under `dist/data/` when run from `dist/`.
 - Dashboard pages are marked `noindex`; the public landing page is optimized for SEO.
 - `health`, `robots.txt`, and `sitemap.xml` are available out of the box.

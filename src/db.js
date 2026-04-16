@@ -1,426 +1,563 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import Database from "better-sqlite3";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "..");
 const dataDir = path.join(rootDir, "data");
-const databasePath = path.join(dataDir, "signaldock.db");
+const databasePath = path.join(dataDir, "signaldock.json");
 
 fs.mkdirSync(dataDir, { recursive: true });
 
-export const connection = new Database(databasePath);
+function createEmptyState() {
+  return {
+    meta: {
+      format: "signaldock-json",
+      version: 1
+    },
+    counters: {
+      users: 0,
+      apiRoutes: 0,
+      wsEvents: 0,
+      requestLogs: 0,
+      wsLogs: 0,
+      ipBlocks: 0
+    },
+    users: [],
+    apiRoutes: [],
+    wsEvents: [],
+    requestLogs: [],
+    wsLogs: [],
+    ipBlocks: []
+  };
+}
 
-connection.pragma("journal_mode = WAL");
-connection.pragma("foreign_keys = ON");
+function normalizeState(parsed) {
+  const empty = createEmptyState();
+  return {
+    meta: {
+      ...empty.meta,
+      ...(parsed?.meta && typeof parsed.meta === "object" ? parsed.meta : {})
+    },
+    counters: {
+      ...empty.counters,
+      ...(parsed?.counters && typeof parsed.counters === "object" ? parsed.counters : {})
+    },
+    users: Array.isArray(parsed?.users) ? parsed.users : [],
+    apiRoutes: Array.isArray(parsed?.apiRoutes) ? parsed.apiRoutes : [],
+    wsEvents: Array.isArray(parsed?.wsEvents) ? parsed.wsEvents : [],
+    requestLogs: Array.isArray(parsed?.requestLogs) ? parsed.requestLogs : [],
+    wsLogs: Array.isArray(parsed?.wsLogs) ? parsed.wsLogs : [],
+    ipBlocks: Array.isArray(parsed?.ipBlocks) ? parsed.ipBlocks : []
+  };
+}
 
-connection.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    last_login_at TEXT
-  );
+function persistState(snapshot) {
+  fs.writeFileSync(databasePath, `${JSON.stringify(snapshot, null, 2)}\n`, "utf8");
+}
 
-  CREATE TABLE IF NOT EXISTS api_routes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    method TEXT NOT NULL,
-    path TEXT NOT NULL,
-    status_code INTEGER NOT NULL DEFAULT 200,
-    content_type TEXT NOT NULL DEFAULT 'application/json',
-    response_body TEXT NOT NULL,
-    headers_json TEXT NOT NULL DEFAULT '{}',
-    delay_ms INTEGER NOT NULL DEFAULT 0,
-    is_active INTEGER NOT NULL DEFAULT 1,
-    notes TEXT NOT NULL DEFAULT '',
-    hit_count INTEGER NOT NULL DEFAULT 0,
-    last_hit_at TEXT,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
-    UNIQUE(user_id, method, path)
-  );
+function loadState() {
+  if (!fs.existsSync(databasePath)) {
+    const initialState = createEmptyState();
+    persistState(initialState);
+    return initialState;
+  }
 
-  CREATE TABLE IF NOT EXISTS ws_events (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    namespace TEXT NOT NULL DEFAULT '',
-    event_name TEXT NOT NULL,
-    payload_template TEXT NOT NULL,
-    is_active INTEGER NOT NULL DEFAULT 1,
-    notes TEXT NOT NULL DEFAULT '',
-    trigger_count INTEGER NOT NULL DEFAULT 0,
-    last_trigger_at TEXT,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
-    UNIQUE(user_id, namespace, event_name)
-  );
+  const raw = fs.readFileSync(databasePath, "utf8").trim();
+  if (!raw) {
+    const emptyState = createEmptyState();
+    persistState(emptyState);
+    return emptyState;
+  }
 
-  CREATE TABLE IF NOT EXISTS request_logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    route_id INTEGER NOT NULL REFERENCES api_routes(id) ON DELETE CASCADE,
-    ip_address TEXT NOT NULL,
-    request_method TEXT NOT NULL,
-    status_code INTEGER NOT NULL,
-    hit_at TEXT NOT NULL
-  );
+  try {
+    return normalizeState(JSON.parse(raw));
+  } catch (error) {
+    throw new Error(`Failed to parse ${databasePath}: ${error.message}`);
+  }
+}
 
-  CREATE TABLE IF NOT EXISTS ws_logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    ws_event_id INTEGER REFERENCES ws_events(id) ON DELETE SET NULL,
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    namespace TEXT NOT NULL DEFAULT '',
-    event_name TEXT NOT NULL DEFAULT '',
-    ip_address TEXT NOT NULL,
-    action_type TEXT NOT NULL,
-    hit_at TEXT NOT NULL
-  );
+const state = loadState();
+persistState(state);
 
-  CREATE TABLE IF NOT EXISTS ip_blocks (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    channel_type TEXT NOT NULL,
-    route_or_event_key TEXT NOT NULL,
-    ip_address TEXT NOT NULL,
-    blocked_until TEXT NOT NULL,
-    reason TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    UNIQUE(user_id, channel_type, route_or_event_key, ip_address)
-  );
+export const connection = {
+  adapter: "json-file",
+  path: databasePath
+};
 
-  CREATE INDEX IF NOT EXISTS idx_api_routes_user_method ON api_routes(user_id, method);
-  CREATE INDEX IF NOT EXISTS idx_ws_events_user_namespace ON ws_events(user_id, namespace);
-  CREATE INDEX IF NOT EXISTS idx_request_logs_route_hit_at ON request_logs(route_id, hit_at DESC);
-  CREATE INDEX IF NOT EXISTS idx_ws_logs_user_hit_at ON ws_logs(user_id, hit_at DESC);
-  CREATE INDEX IF NOT EXISTS idx_ip_blocks_lookup ON ip_blocks(user_id, channel_type, route_or_event_key, ip_address, blocked_until);
-`);
+function nextId(counterName) {
+  state.counters[counterName] = Number(state.counters[counterName] ?? 0) + 1;
+  return state.counters[counterName];
+}
 
-const deleteExpiredBlocksStatement = connection.prepare(`
-  DELETE FROM ip_blocks
-  WHERE blocked_until <= ?
-`);
+function cloneRow(row) {
+  return row ? { ...row } : null;
+}
 
-const findUserByIdStatement = connection.prepare(`
-  SELECT *
-  FROM users
-  WHERE id = ?
-`);
+function cloneRows(rows) {
+  return rows.map((row) => ({ ...row }));
+}
 
-const findUserByUsernameStatement = connection.prepare(`
-  SELECT *
-  FROM users
-  WHERE username = ?
-`);
+function normalizeId(value) {
+  const numericValue = Number(value);
+  return Number.isInteger(numericValue) ? numericValue : Number.NaN;
+}
 
-const createUserStatement = connection.prepare(`
-  INSERT INTO users (username, password_hash, created_at, last_login_at)
-  VALUES (?, ?, ?, ?)
-`);
+function createUniqueConstraintError(message) {
+  const error = new Error(message);
+  error.code = "SQLITE_CONSTRAINT_UNIQUE";
+  return error;
+}
 
-const updateUserLastLoginStatement = connection.prepare(`
-  UPDATE users
-  SET last_login_at = ?
-  WHERE id = ?
-`);
+function sortByUpdatedAtDesc(left, right) {
+  if (left.updated_at === right.updated_at) {
+    return Number(right.id) - Number(left.id);
+  }
 
-const listApiRoutesStatement = connection.prepare(`
-  SELECT *
-  FROM api_routes
-  WHERE user_id = ?
-  ORDER BY updated_at DESC, id DESC
-`);
+  return String(right.updated_at).localeCompare(String(left.updated_at));
+}
 
-const listApiRoutesForMethodStatement = connection.prepare(`
-  SELECT *
-  FROM api_routes
-  WHERE user_id = ? AND method = ? AND is_active = 1
-  ORDER BY length(path) DESC, id DESC
-`);
+function sortByPathLengthDesc(left, right) {
+  const pathLengthDifference = String(right.path).length - String(left.path).length;
+  if (pathLengthDifference !== 0) {
+    return pathLengthDifference;
+  }
 
-const findApiRouteByIdStatement = connection.prepare(`
-  SELECT *
-  FROM api_routes
-  WHERE id = ? AND user_id = ?
-`);
+  return Number(right.id) - Number(left.id);
+}
 
-const createApiRouteStatement = connection.prepare(`
-  INSERT INTO api_routes (
-    user_id, method, path, status_code, content_type, response_body, headers_json, delay_ms,
-    is_active, notes, created_at, updated_at
-  )
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-`);
+function save() {
+  persistState(state);
+}
 
-const updateApiRouteStatement = connection.prepare(`
-  UPDATE api_routes
-  SET method = ?, path = ?, status_code = ?, content_type = ?, response_body = ?, headers_json = ?,
-      delay_ms = ?, is_active = ?, notes = ?, updated_at = ?
-  WHERE id = ? AND user_id = ?
-`);
+function removeById(collection, id) {
+  const index = collection.findIndex((row) => Number(row.id) === id);
+  if (index === -1) {
+    return null;
+  }
 
-const deleteApiRouteStatement = connection.prepare(`
-  DELETE FROM api_routes
-  WHERE id = ? AND user_id = ?
-`);
-
-const listWsEventsStatement = connection.prepare(`
-  SELECT *
-  FROM ws_events
-  WHERE user_id = ?
-  ORDER BY updated_at DESC, id DESC
-`);
-
-const findWsEventByIdStatement = connection.prepare(`
-  SELECT *
-  FROM ws_events
-  WHERE id = ? AND user_id = ?
-`);
-
-const createWsEventStatement = connection.prepare(`
-  INSERT INTO ws_events (
-    user_id, namespace, event_name, payload_template, is_active, notes, created_at, updated_at
-  )
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-`);
-
-const updateWsEventStatement = connection.prepare(`
-  UPDATE ws_events
-  SET namespace = ?, event_name = ?, payload_template = ?, is_active = ?, notes = ?, updated_at = ?
-  WHERE id = ? AND user_id = ?
-`);
-
-const deleteWsEventStatement = connection.prepare(`
-  DELETE FROM ws_events
-  WHERE id = ? AND user_id = ?
-`);
-
-const insertRequestLogStatement = connection.prepare(`
-  INSERT INTO request_logs (route_id, ip_address, request_method, status_code, hit_at)
-  VALUES (?, ?, ?, ?, ?)
-`);
-
-const updateApiRouteHitStatement = connection.prepare(`
-  UPDATE api_routes
-  SET hit_count = hit_count + 1, last_hit_at = ?
-  WHERE id = ?
-`);
-
-const insertWsLogStatement = connection.prepare(`
-  INSERT INTO ws_logs (ws_event_id, user_id, namespace, event_name, ip_address, action_type, hit_at)
-  VALUES (?, ?, ?, ?, ?, ?, ?)
-`);
-
-const updateWsTriggerStatement = connection.prepare(`
-  UPDATE ws_events
-  SET trigger_count = trigger_count + 1, last_trigger_at = ?
-  WHERE id = ?
-`);
-
-const upsertIpBlockStatement = connection.prepare(`
-  INSERT INTO ip_blocks (
-    user_id, channel_type, route_or_event_key, ip_address, blocked_until, reason, created_at
-  )
-  VALUES (?, ?, ?, ?, ?, ?, ?)
-  ON CONFLICT(user_id, channel_type, route_or_event_key, ip_address)
-  DO UPDATE SET blocked_until = excluded.blocked_until, reason = excluded.reason, created_at = excluded.created_at
-`);
-
-const findActiveIpBlockStatement = connection.prepare(`
-  SELECT *
-  FROM ip_blocks
-  WHERE user_id = ?
-    AND channel_type = ?
-    AND route_or_event_key = ?
-    AND ip_address = ?
-    AND blocked_until > ?
-`);
-
-const userSummaryStatement = connection.prepare(`
-  SELECT
-    (SELECT COUNT(*) FROM api_routes WHERE user_id = ?) AS api_count,
-    (SELECT COUNT(*) FROM ws_events WHERE user_id = ?) AS ws_count,
-    (SELECT COALESCE(SUM(hit_count), 0) FROM api_routes WHERE user_id = ?) AS total_api_hits,
-    (SELECT COALESCE(SUM(trigger_count), 0) FROM ws_events WHERE user_id = ?) AS total_ws_triggers,
-    (SELECT COUNT(*) FROM ip_blocks WHERE user_id = ? AND blocked_until > ?) AS blocked_ip_count,
-    (SELECT MAX(created_at) FROM ip_blocks WHERE user_id = ? AND blocked_until > ?) AS last_blocked_at
-`);
-
-const recordApiRouteHit = connection.transaction((routeId, ipAddress, method, statusCode, hitAt) => {
-  updateApiRouteHitStatement.run(hitAt, routeId);
-  insertRequestLogStatement.run(routeId, ipAddress, method, statusCode, hitAt);
-});
-
-const recordWsTrigger = connection.transaction((wsEventId, userId, namespace, eventName, ipAddress, hitAt) => {
-  updateWsTriggerStatement.run(hitAt, wsEventId);
-  insertWsLogStatement.run(wsEventId, userId, namespace, eventName, ipAddress, "trigger", hitAt);
-});
+  const [removed] = collection.splice(index, 1);
+  return removed;
+}
 
 export function cleanupExpiredBlocks() {
-  deleteExpiredBlocksStatement.run(new Date().toISOString());
+  const now = new Date().toISOString();
+  const nextBlocks = state.ipBlocks.filter((block) => block.blocked_until > now);
+
+  if (nextBlocks.length !== state.ipBlocks.length) {
+    state.ipBlocks = nextBlocks;
+    save();
+  }
 }
 
 export function findUserById(id) {
   cleanupExpiredBlocks();
-  return findUserByIdStatement.get(id);
+  const userId = normalizeId(id);
+  return cloneRow(state.users.find((user) => Number(user.id) === userId));
 }
 
 export function findUserByUsername(username) {
   cleanupExpiredBlocks();
-  return findUserByUsernameStatement.get(username);
+  return cloneRow(state.users.find((user) => user.username === username));
 }
 
 export function createUser(username, passwordHash) {
+  if (state.users.some((user) => user.username === username)) {
+    throw createUniqueConstraintError("UNIQUE constraint failed: users.username");
+  }
+
   const now = new Date().toISOString();
-  const result = createUserStatement.run(username, passwordHash, now, now);
-  return findUserById(result.lastInsertRowid);
+  const user = {
+    id: nextId("users"),
+    username,
+    password_hash: passwordHash,
+    created_at: now,
+    last_login_at: now
+  };
+
+  state.users.push(user);
+  save();
+  return cloneRow(user);
 }
 
 export function touchUserLastLogin(userId) {
-  updateUserLastLoginStatement.run(new Date().toISOString(), userId);
+  const normalizedUserId = normalizeId(userId);
+  const user = state.users.find((row) => Number(row.id) === normalizedUserId);
+  if (!user) {
+    return;
+  }
+
+  user.last_login_at = new Date().toISOString();
+  save();
 }
 
 export function listApiRoutes(userId) {
-  return listApiRoutesStatement.all(userId);
+  const normalizedUserId = normalizeId(userId);
+  return cloneRows(
+    state.apiRoutes
+      .filter((route) => Number(route.user_id) === normalizedUserId)
+      .sort(sortByUpdatedAtDesc)
+  );
 }
 
 export function listApiRoutesForMethod(userId, method) {
-  return listApiRoutesForMethodStatement.all(userId, method);
+  const normalizedUserId = normalizeId(userId);
+  return cloneRows(
+    state.apiRoutes
+      .filter(
+        (route) =>
+          Number(route.user_id) === normalizedUserId &&
+          route.method === method &&
+          Number(route.is_active) === 1
+      )
+      .sort(sortByPathLengthDesc)
+  );
 }
 
 export function getApiRouteById(routeId, userId) {
-  return findApiRouteByIdStatement.get(routeId, userId);
+  const normalizedRouteId = normalizeId(routeId);
+  const normalizedUserId = normalizeId(userId);
+  return cloneRow(
+    state.apiRoutes.find(
+      (route) => Number(route.id) === normalizedRouteId && Number(route.user_id) === normalizedUserId
+    )
+  );
 }
 
 export function createApiRoute(userId, payload) {
-  const now = new Date().toISOString();
-  const result = createApiRouteStatement.run(
-    userId,
-    payload.method,
-    payload.path,
-    payload.statusCode,
-    payload.contentType,
-    payload.responseBody,
-    payload.headersJson,
-    payload.delayMs,
-    payload.isActive ? 1 : 0,
-    payload.notes,
-    now,
-    now
+  const normalizedUserId = normalizeId(userId);
+  const duplicate = state.apiRoutes.some(
+    (route) =>
+      Number(route.user_id) === normalizedUserId &&
+      route.method === payload.method &&
+      route.path === payload.path
   );
-  return getApiRouteById(result.lastInsertRowid, userId);
+
+  if (duplicate) {
+    throw createUniqueConstraintError("UNIQUE constraint failed: api_routes.user_id, api_routes.method, api_routes.path");
+  }
+
+  const now = new Date().toISOString();
+  const route = {
+    id: nextId("apiRoutes"),
+    user_id: normalizedUserId,
+    method: payload.method,
+    path: payload.path,
+    status_code: payload.statusCode,
+    content_type: payload.contentType,
+    response_body: payload.responseBody,
+    headers_json: payload.headersJson,
+    delay_ms: payload.delayMs,
+    is_active: payload.isActive ? 1 : 0,
+    notes: payload.notes,
+    hit_count: 0,
+    last_hit_at: null,
+    created_at: now,
+    updated_at: now
+  };
+
+  state.apiRoutes.push(route);
+  save();
+  return cloneRow(route);
 }
 
 export function updateApiRoute(routeId, userId, payload) {
-  updateApiRouteStatement.run(
-    payload.method,
-    payload.path,
-    payload.statusCode,
-    payload.contentType,
-    payload.responseBody,
-    payload.headersJson,
-    payload.delayMs,
-    payload.isActive ? 1 : 0,
-    payload.notes,
-    new Date().toISOString(),
-    routeId,
-    userId
+  const normalizedRouteId = normalizeId(routeId);
+  const normalizedUserId = normalizeId(userId);
+  const route = state.apiRoutes.find(
+    (row) => Number(row.id) === normalizedRouteId && Number(row.user_id) === normalizedUserId
   );
-  return getApiRouteById(routeId, userId);
+
+  if (!route) {
+    return null;
+  }
+
+  const duplicate = state.apiRoutes.some(
+    (row) =>
+      Number(row.id) !== normalizedRouteId &&
+      Number(row.user_id) === normalizedUserId &&
+      row.method === payload.method &&
+      row.path === payload.path
+  );
+
+  if (duplicate) {
+    throw createUniqueConstraintError("UNIQUE constraint failed: api_routes.user_id, api_routes.method, api_routes.path");
+  }
+
+  route.method = payload.method;
+  route.path = payload.path;
+  route.status_code = payload.statusCode;
+  route.content_type = payload.contentType;
+  route.response_body = payload.responseBody;
+  route.headers_json = payload.headersJson;
+  route.delay_ms = payload.delayMs;
+  route.is_active = payload.isActive ? 1 : 0;
+  route.notes = payload.notes;
+  route.updated_at = new Date().toISOString();
+
+  save();
+  return cloneRow(route);
 }
 
 export function deleteApiRoute(routeId, userId) {
-  return deleteApiRouteStatement.run(routeId, userId).changes > 0;
+  const normalizedRouteId = normalizeId(routeId);
+  const normalizedUserId = normalizeId(userId);
+  const route = state.apiRoutes.find(
+    (row) => Number(row.id) === normalizedRouteId && Number(row.user_id) === normalizedUserId
+  );
+
+  if (!route) {
+    return false;
+  }
+
+  removeById(state.apiRoutes, normalizedRouteId);
+  state.requestLogs = state.requestLogs.filter((log) => Number(log.route_id) !== normalizedRouteId);
+  save();
+  return true;
 }
 
 export function recordApiHit(routeId, ipAddress, method, statusCode) {
-  recordApiRouteHit(routeId, ipAddress, method, statusCode, new Date().toISOString());
+  const normalizedRouteId = normalizeId(routeId);
+  const route = state.apiRoutes.find((row) => Number(row.id) === normalizedRouteId);
+  if (!route) {
+    return;
+  }
+
+  const hitAt = new Date().toISOString();
+  route.hit_count = Number(route.hit_count ?? 0) + 1;
+  route.last_hit_at = hitAt;
+
+  state.requestLogs.push({
+    id: nextId("requestLogs"),
+    route_id: normalizedRouteId,
+    ip_address: ipAddress,
+    request_method: method,
+    status_code: Number(statusCode),
+    hit_at: hitAt
+  });
+
+  save();
 }
 
 export function listWsEvents(userId) {
-  return listWsEventsStatement.all(userId);
+  const normalizedUserId = normalizeId(userId);
+  return cloneRows(
+    state.wsEvents
+      .filter((event) => Number(event.user_id) === normalizedUserId)
+      .sort(sortByUpdatedAtDesc)
+  );
 }
 
 export function getWsEventById(eventId, userId) {
-  return findWsEventByIdStatement.get(eventId, userId);
+  const normalizedEventId = normalizeId(eventId);
+  const normalizedUserId = normalizeId(userId);
+  return cloneRow(
+    state.wsEvents.find(
+      (event) => Number(event.id) === normalizedEventId && Number(event.user_id) === normalizedUserId
+    )
+  );
 }
 
 export function createWsEvent(userId, payload) {
-  const now = new Date().toISOString();
-  const result = createWsEventStatement.run(
-    userId,
-    payload.namespace,
-    payload.eventName,
-    payload.payloadTemplate,
-    payload.isActive ? 1 : 0,
-    payload.notes,
-    now,
-    now
+  const normalizedUserId = normalizeId(userId);
+  const duplicate = state.wsEvents.some(
+    (event) =>
+      Number(event.user_id) === normalizedUserId &&
+      event.namespace === payload.namespace &&
+      event.event_name === payload.eventName
   );
-  return getWsEventById(result.lastInsertRowid, userId);
+
+  if (duplicate) {
+    throw createUniqueConstraintError(
+      "UNIQUE constraint failed: ws_events.user_id, ws_events.namespace, ws_events.event_name"
+    );
+  }
+
+  const now = new Date().toISOString();
+  const event = {
+    id: nextId("wsEvents"),
+    user_id: normalizedUserId,
+    namespace: payload.namespace,
+    event_name: payload.eventName,
+    payload_template: payload.payloadTemplate,
+    is_active: payload.isActive ? 1 : 0,
+    notes: payload.notes,
+    trigger_count: 0,
+    last_trigger_at: null,
+    created_at: now,
+    updated_at: now
+  };
+
+  state.wsEvents.push(event);
+  save();
+  return cloneRow(event);
 }
 
 export function updateWsEvent(eventId, userId, payload) {
-  updateWsEventStatement.run(
-    payload.namespace,
-    payload.eventName,
-    payload.payloadTemplate,
-    payload.isActive ? 1 : 0,
-    payload.notes,
-    new Date().toISOString(),
-    eventId,
-    userId
+  const normalizedEventId = normalizeId(eventId);
+  const normalizedUserId = normalizeId(userId);
+  const event = state.wsEvents.find(
+    (row) => Number(row.id) === normalizedEventId && Number(row.user_id) === normalizedUserId
   );
-  return getWsEventById(eventId, userId);
+
+  if (!event) {
+    return null;
+  }
+
+  const duplicate = state.wsEvents.some(
+    (row) =>
+      Number(row.id) !== normalizedEventId &&
+      Number(row.user_id) === normalizedUserId &&
+      row.namespace === payload.namespace &&
+      row.event_name === payload.eventName
+  );
+
+  if (duplicate) {
+    throw createUniqueConstraintError(
+      "UNIQUE constraint failed: ws_events.user_id, ws_events.namespace, ws_events.event_name"
+    );
+  }
+
+  event.namespace = payload.namespace;
+  event.event_name = payload.eventName;
+  event.payload_template = payload.payloadTemplate;
+  event.is_active = payload.isActive ? 1 : 0;
+  event.notes = payload.notes;
+  event.updated_at = new Date().toISOString();
+
+  save();
+  return cloneRow(event);
 }
 
 export function deleteWsEvent(eventId, userId) {
-  return deleteWsEventStatement.run(eventId, userId).changes > 0;
+  const normalizedEventId = normalizeId(eventId);
+  const normalizedUserId = normalizeId(userId);
+  const event = state.wsEvents.find(
+    (row) => Number(row.id) === normalizedEventId && Number(row.user_id) === normalizedUserId
+  );
+
+  if (!event) {
+    return false;
+  }
+
+  removeById(state.wsEvents, normalizedEventId);
+  for (const log of state.wsLogs) {
+    if (Number(log.ws_event_id) === normalizedEventId) {
+      log.ws_event_id = null;
+    }
+  }
+
+  save();
+  return true;
 }
 
 export function recordWsEventTrigger(eventId, userId, namespace, eventName, ipAddress) {
-  recordWsTrigger(eventId, userId, namespace, eventName, ipAddress, new Date().toISOString());
+  const normalizedEventId = normalizeId(eventId);
+  const event = state.wsEvents.find((row) => Number(row.id) === normalizedEventId);
+  if (!event) {
+    return;
+  }
+
+  const hitAt = new Date().toISOString();
+  event.trigger_count = Number(event.trigger_count ?? 0) + 1;
+  event.last_trigger_at = hitAt;
+
+  state.wsLogs.push({
+    id: nextId("wsLogs"),
+    ws_event_id: normalizedEventId,
+    user_id: normalizeId(userId),
+    namespace,
+    event_name: eventName,
+    ip_address: ipAddress,
+    action_type: "trigger",
+    hit_at: hitAt
+  });
+
+  save();
 }
 
 export function recordWsAction({ wsEventId = null, userId, namespace = "", eventName = "", ipAddress, actionType }) {
-  insertWsLogStatement.run(wsEventId, userId, namespace, eventName, ipAddress, actionType, new Date().toISOString());
+  state.wsLogs.push({
+    id: nextId("wsLogs"),
+    ws_event_id: wsEventId === null ? null : normalizeId(wsEventId),
+    user_id: normalizeId(userId),
+    namespace,
+    event_name: eventName,
+    ip_address: ipAddress,
+    action_type: actionType,
+    hit_at: new Date().toISOString()
+  });
+
+  save();
 }
 
 export function upsertIpBlock({ userId, channelType, routeOrEventKey, ipAddress, blockedUntil, reason }) {
-  upsertIpBlockStatement.run(
-    userId,
-    channelType,
-    routeOrEventKey,
-    ipAddress,
-    blockedUntil,
-    reason,
-    new Date().toISOString()
+  cleanupExpiredBlocks();
+  const normalizedUserId = normalizeId(userId);
+  const createdAt = new Date().toISOString();
+  const existing = state.ipBlocks.find(
+    (block) =>
+      Number(block.user_id) === normalizedUserId &&
+      block.channel_type === channelType &&
+      block.route_or_event_key === routeOrEventKey &&
+      block.ip_address === ipAddress
   );
+
+  if (existing) {
+    existing.blocked_until = blockedUntil;
+    existing.reason = reason;
+    existing.created_at = createdAt;
+  } else {
+    state.ipBlocks.push({
+      id: nextId("ipBlocks"),
+      user_id: normalizedUserId,
+      channel_type: channelType,
+      route_or_event_key: routeOrEventKey,
+      ip_address: ipAddress,
+      blocked_until: blockedUntil,
+      reason,
+      created_at: createdAt
+    });
+  }
+
+  save();
 }
 
 export function getActiveIpBlock(userId, channelType, routeOrEventKey, ipAddress) {
   cleanupExpiredBlocks();
-  return findActiveIpBlockStatement.get(
-    userId,
-    channelType,
-    routeOrEventKey,
-    ipAddress,
-    new Date().toISOString()
+  const normalizedUserId = normalizeId(userId);
+  const now = new Date().toISOString();
+  return cloneRow(
+    state.ipBlocks.find(
+      (block) =>
+        Number(block.user_id) === normalizedUserId &&
+        block.channel_type === channelType &&
+        block.route_or_event_key === routeOrEventKey &&
+        block.ip_address === ipAddress &&
+        block.blocked_until > now
+    )
   );
 }
 
 export function getUserSummary(userId) {
   cleanupExpiredBlocks();
-  return userSummaryStatement.get(
-    userId,
-    userId,
-    userId,
-    userId,
-    userId,
-    new Date().toISOString(),
-    userId,
-    new Date().toISOString()
+  const normalizedUserId = normalizeId(userId);
+  const activeBlocks = state.ipBlocks.filter(
+    (block) => Number(block.user_id) === normalizedUserId && block.blocked_until > new Date().toISOString()
   );
+  const apiRoutes = state.apiRoutes.filter((route) => Number(route.user_id) === normalizedUserId);
+  const wsEvents = state.wsEvents.filter((event) => Number(event.user_id) === normalizedUserId);
+
+  return {
+    api_count: apiRoutes.length,
+    ws_count: wsEvents.length,
+    total_api_hits: apiRoutes.reduce((sum, route) => sum + Number(route.hit_count ?? 0), 0),
+    total_ws_triggers: wsEvents.reduce((sum, event) => sum + Number(event.trigger_count ?? 0), 0),
+    blocked_ip_count: activeBlocks.length,
+    last_blocked_at: activeBlocks.reduce(
+      (latest, block) => (!latest || block.created_at > latest ? block.created_at : latest),
+      null
+    )
+  };
 }
