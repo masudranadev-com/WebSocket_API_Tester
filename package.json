@@ -8,6 +8,7 @@
     "dev": "concurrently -k -n STYLES,SERVER -c cyan,green \"npm:dev:styles\" \"npm:dev:server\"",
     "dev:server": "node --watch src/server.js",
     "dev:styles": "tailwindcss -c tailwind.config.cjs -i ./src/styles/tailwind.css -o ./public/assets/styles.css --watch",
+    "postinstall": "npm run build:styles",
     "build": "npm run build:styles && node scripts/build.mjs",
     "build:styles": "tailwindcss -c tailwind.config.cjs -i ./src/styles/tailwind.css -o ./public/assets/styles.css --minify",
     "prestart": "npm run build:styles",
@@ -34,10 +35,10 @@
     "express-session": "^1.18.1",
     "helmet": "^8.1.0",
     "socket.io": "^4.8.1",
+    "tailwindcss": "^3.4.17",
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2",
-    "tailwindcss": "^3.4.17"
+    "concurrently": "^9.1.2"
   }
 }

@@ -2,6 +2,10 @@
 
 SignalDock is a multi-tenant mock platform for teams that need hosted REST endpoints and Socket.IO events before a backend is ready. It is designed for frontend development, QA flows, demos, integration testing, and mobile app prototyping.
 
+## Live Demo
+
+https://api.masudranadev.com/
+
 ## Features
 
 - Hosted mock REST APIs under `/{username}`
@@ -85,7 +89,7 @@ cp .env.example .env
 
 Environment variables:
 
-- `APP_URL`: canonical site URL used for sitemap and SEO metadata
+- `APP_URL`: canonical site URL used for sitemap and SEO metadata, for example `https://api.masudranadev.com/`
 - `PORT`: HTTP port for the Express server
 - `SESSION_SECRET`: session signing secret
 
