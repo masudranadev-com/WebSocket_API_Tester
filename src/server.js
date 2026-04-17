@@ -52,8 +52,9 @@ const authSchema = z.object({
   username: z
     .string()
     .transform(normalizeUsername)
-    .refine((value) => isValidUsername(value), "Use a lowercase slug such as product-demo."),
-  password: z.string().min(8, "Password must be at least 8 characters.").max(128)
+    .refine((value) => value.length > 0, "Username is required.")
+    .refine((value) => isValidUsername(value), "Username can use almost anything except '/' and reserved routes."),
+  password: z.string().min(1, "Password is required.").max(128)
 });
 
 const apiRouteSchema = z.object({
@@ -328,8 +329,15 @@ function selectMatchingRoute(candidateRoutes, requestPath) {
 function socketIdentity(namespaceName) {
   const trimmed = namespaceName.replace(/^\/+/, "");
   const segments = trimmed.split("/").filter(Boolean);
+  const rawUsername = segments[0] ?? "";
   return {
-    username: segments[0] ?? "",
+    username: (() => {
+      try {
+        return decodeURIComponent(rawUsername);
+      } catch {
+        return rawUsername;
+      }
+    })(),
     namespace: segments.length > 1 ? `/${segments.slice(1).join("/")}` : ""
   };
 }
@@ -601,7 +609,7 @@ app.all(/^\/([^/]+)(\/.*)?$/, async (req, res, next) => {
   const username = req.params[0];
   const relativePath = normalizeRoutePath(req.params[1] || "/");
 
-  if (RESERVED_USERNAMES.has(username)) {
+  if (RESERVED_USERNAMES.has(String(username).toLowerCase())) {
     return next();
   }
 
@@ -647,7 +655,7 @@ app.all(/^\/([^/]+)(\/.*)?$/, async (req, res, next) => {
   res.status(route.status_code).send(responseBody);
 });
 
-const workspaceNamespaces = io.of(/^\/[a-z0-9-]+(?:\/[a-z0-9-]+)*$/i);
+const workspaceNamespaces = io.of(/^\/[^/]+(?:\/[a-z0-9-]+)*$/i);
 
 workspaceNamespaces.use((socket, next) => {
   const { username, namespace } = socketIdentity(socket.nsp.name);

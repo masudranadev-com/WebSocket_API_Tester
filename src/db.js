@@ -10,6 +10,12 @@ const databasePath = path.join(dataDir, "signaldock.json");
 
 fs.mkdirSync(dataDir, { recursive: true });
 
+function usernameKey(value) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase();
+}
+
 function createEmptyState() {
   return {
     meta: {
@@ -159,11 +165,13 @@ export function findUserById(id) {
 
 export function findUserByUsername(username) {
   cleanupExpiredBlocks();
-  return cloneRow(state.users.find((user) => user.username === username));
+  const key = usernameKey(username);
+  return cloneRow(state.users.find((user) => usernameKey(user.username) === key));
 }
 
 export function createUser(username, passwordHash) {
-  if (state.users.some((user) => user.username === username)) {
+  const key = usernameKey(username);
+  if (state.users.some((user) => usernameKey(user.username) === key)) {
     throw createUniqueConstraintError("UNIQUE constraint failed: users.username");
   }
 

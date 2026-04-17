@@ -52,7 +52,7 @@ const defaultWsDraft = () => ({
   notes: "",
   trigger_count: 0,
   last_trigger_at: null,
-  full_namespace: `/${config.username}`
+  full_namespace: buildSocketNamespace(config.username)
 });
 
 function normalizePath(value) {
@@ -73,6 +73,10 @@ function normalizeNamespace(value) {
   const collapsed = trimmed.replace(/\/+/g, "/");
   const prefixed = collapsed.startsWith("/") ? collapsed : `/${collapsed}`;
   return prefixed.length > 1 ? prefixed.replace(/\/$/, "") : "";
+}
+
+function buildSocketNamespace(username, namespace = "") {
+  return `/${encodeURIComponent(String(username || ""))}${normalizeNamespace(namespace)}`;
 }
 
 const elements = {
@@ -329,7 +333,7 @@ function renderWsEditor() {
   elements.wsPayloadTemplate.value = event.payload_template;
   elements.wsNotes.value = event.notes || "";
   elements.wsIsActive.checked = Boolean(event.is_active);
-  elements.wsNamespacePreview.textContent = `${window.location.origin}${event.full_namespace || `/${config.username}`}`;
+  elements.wsNamespacePreview.textContent = `${window.location.origin}${event.full_namespace || buildSocketNamespace(config.username)}`;
   elements.wsTriggerCount.textContent = String(event.trigger_count || 0);
   elements.wsLastTrigger.textContent = event.last_trigger_at ? formatDate(event.last_trigger_at) : "No triggers yet";
   elements.deleteWs.disabled = !event.id;
@@ -347,7 +351,7 @@ function refreshApiPreview() {
 
 function refreshWsPreview() {
   const event = currentWs();
-  elements.wsNamespacePreview.textContent = `${window.location.origin}${event.full_namespace || `/${config.username}`}`;
+  elements.wsNamespacePreview.textContent = `${window.location.origin}${event.full_namespace || buildSocketNamespace(config.username)}`;
   elements.wsTriggerCount.textContent = String(event.trigger_count || 0);
   elements.wsLastTrigger.textContent = event.last_trigger_at ? formatDate(event.last_trigger_at) : "No triggers yet";
   elements.deleteWs.disabled = !event.id;
@@ -395,7 +399,7 @@ function updateWsDraft() {
     payload_template: elements.wsPayloadTemplate.value,
     is_active: elements.wsIsActive.checked,
     notes: elements.wsNotes.value,
-    full_namespace: `/${config.username}${namespace}`
+    full_namespace: buildSocketNamespace(config.username, namespace)
   };
   refreshWsPreview();
 }
@@ -661,7 +665,7 @@ function bindEvents() {
   elements.copyWsSnippet.addEventListener("click", () => {
     const event = currentWs();
     const snippet = [
-      `const socket = io("${window.location.origin}${event.full_namespace || `/${config.username}`}");`,
+      `const socket = io("${window.location.origin}${event.full_namespace || buildSocketNamespace(config.username)}");`,
       `socket.on("${event.event_name}", (payload) => {`,
       "  console.log(payload);",
       "});"

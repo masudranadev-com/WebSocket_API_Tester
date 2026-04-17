@@ -13,12 +13,11 @@ export const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS",
 
 export function normalizeUsername(value) {
   return String(value ?? "")
-    .trim()
-    .toLowerCase();
+    .trim();
 }
 
 export function isValidUsername(value) {
-  return /^[a-z0-9](?:[a-z0-9-]{1,30}[a-z0-9])$/.test(value) && !RESERVED_USERNAMES.has(value);
+  return value.length > 0 && !value.includes("/") && !RESERVED_USERNAMES.has(value.toLowerCase());
 }
 
 export function normalizeRoutePath(value) {
@@ -54,7 +53,7 @@ export function isValidNamespace(value) {
 }
 
 export function buildWorkspaceUrl(req, username) {
-  return `${req.protocol}://${req.get("host")}/${username}`;
+  return `${req.protocol}://${req.get("host")}/${encodeURIComponent(String(username ?? ""))}`;
 }
 
 export function buildPublicApiUrl(req, username, routePath) {
@@ -63,7 +62,7 @@ export function buildPublicApiUrl(req, username, routePath) {
 }
 
 export function buildSocketNamespace(username, namespace = "") {
-  return `/${username}${normalizeNamespace(namespace)}`;
+  return `/${encodeURIComponent(String(username ?? ""))}${normalizeNamespace(namespace)}`;
 }
 
 export function methodColor(method) {
