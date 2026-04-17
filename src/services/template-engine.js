@@ -49,7 +49,7 @@ export const PLACEHOLDER_GUIDE = [
     token: "[[NUMBER_100000_999999]]",
     meaning: "Random number in an inclusive range",
     example: '{"otp":"[[NUMBER_100000_999999]]"}',
-    note: "Replace 100000 and 999999 with any min and max values you want."
+    note: "Replace the min and max with any integer or decimal values, like [[NUMBER_1.00_150.00]]."
   },
   {
     token: "[[UUID]]",
@@ -99,13 +99,40 @@ function randomInteger(min, max) {
   return String(Math.floor(Math.random() * (high - low + 1)) + low);
 }
 
+function decimalPlaces(value) {
+  const source = String(value ?? "");
+  if (!source.includes(".")) {
+    return 0;
+  }
+
+  return source.split(".")[1].length;
+}
+
+function randomNumberInRange(min, max) {
+  const precision = Math.max(decimalPlaces(min), decimalPlaces(max));
+  if (precision === 0) {
+    return randomInteger(min, max);
+  }
+
+  const scale = 10 ** precision;
+  const low = Math.round(Number(min) * scale);
+  const high = Math.round(Number(max) * scale);
+
+  if (!Number.isFinite(low) || !Number.isFinite(high) || high < low) {
+    return "";
+  }
+
+  const value = Math.floor(Math.random() * (high - low + 1)) + low;
+  return (value / scale).toFixed(precision);
+}
+
 export function renderTemplate(template, context = {}) {
   const source = String(template ?? "");
 
-  return source.replace(/\[\[([A-Z0-9_]+)\]\]/g, (_, rawToken) => {
-    const numberMatch = rawToken.match(/^NUMBER_(\d+)_(\d+)$/);
+  return source.replace(/\[\[([A-Z0-9_.-]+)\]\]/g, (_, rawToken) => {
+    const numberMatch = rawToken.match(/^NUMBER_(-?\d+(?:\.\d+)?)_(-?\d+(?:\.\d+)?)$/);
     if (numberMatch) {
-      return randomInteger(numberMatch[1], numberMatch[2]);
+      return randomNumberInRange(numberMatch[1], numberMatch[2]);
     }
 
     if (rawToken.startsWith("NUMBER_")) {
