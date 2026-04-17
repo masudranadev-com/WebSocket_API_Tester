@@ -33,7 +33,7 @@ const defaultApiDraft = () => ({
   path: "/",
   status_code: 200,
   content_type: "application/json",
-  response_body: '{\n  "message": "Hello [[USERNAME]]",\n  "requestId": "[[UUID]]"\n}',
+  response_body: '{\n  "message": "Hello [[USERNAME]]",\n  "customer": "[[NAME]]",\n  "requestId": "[[UUID]]",\n  "otp": "[[NUMBER_100000_999999]]"\n}',
   headers_json: '{\n  "Cache-Control": "no-store"\n}',
   delay_ms: 0,
   is_active: true,
@@ -47,7 +47,7 @@ const defaultWsDraft = () => ({
   id: null,
   namespace: "",
   event_name: "order.created",
-  payload_template: '{\n  "id": "[[UUID]]",\n  "customer": "[[NAME]]",\n  "createdAt": "[[NOW_ISO]]"\n}',
+  payload_template: '{\n  "id": "[[UUID]]",\n  "customer": "[[NAME]]",\n  "sequence": "[[NUMBER_100000_999999]]",\n  "createdAt": "[[NOW_ISO]]"\n}',
   is_active: true,
   notes: "",
   trigger_count: 0,
@@ -90,7 +90,8 @@ const elements = {
   newItem: document.getElementById("new-item"),
   logoutButton: document.getElementById("logout-button"),
   copyWorkspaceUrl: document.getElementById("copy-workspace-url"),
-  guideDrawer: document.getElementById("guide-drawer"),
+  guideModal: document.getElementById("guide-modal"),
+  guideBackdrop: document.getElementById("guide-backdrop"),
   guideList: document.getElementById("guide-list"),
   toggleGuide: document.getElementById("toggle-guide"),
   closeGuide: document.getElementById("close-guide"),
@@ -163,6 +164,15 @@ function formatDate(value) {
     dateStyle: "medium",
     timeStyle: "short"
   }).format(new Date(value));
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 async function apiFetch(url, options = {}) {
@@ -242,13 +252,36 @@ function renderGuide() {
   elements.guideList.innerHTML = state.placeholderGuide
     .map(
       (item) => `
-        <article class="rounded-2xl border border-ink/10 bg-white/85 p-4">
-          <p class="font-mono text-sm font-semibold">${item.token}</p>
-          <p class="mt-2 text-sm leading-6 text-ink/65">${item.meaning}</p>
+        <article class="rounded-[1.75rem] border border-ink/10 bg-white/90 p-5 shadow-sm">
+          <p class="text-xs uppercase tracking-[0.2em] text-ink/45">Pattern</p>
+          <p class="mt-2 break-all font-mono text-sm font-semibold text-ink">${escapeHtml(item.token)}</p>
+          <p class="mt-4 text-sm font-medium text-ink">${escapeHtml(item.meaning)}</p>
+
+          <div class="mt-4 rounded-[1.25rem] border border-ink/10 bg-[#f7f3ea] p-4">
+            <p class="text-xs uppercase tracking-[0.2em] text-ink/45">Live preview</p>
+            <p class="mt-2 break-all font-mono text-xs leading-6 text-ink/80">${escapeHtml(item.preview || "Rendered at request time")}</p>
+          </div>
+
+          <div class="mt-4 rounded-[1.25rem] border border-ink/10 bg-[#f9f6ef] p-4">
+            <p class="text-xs uppercase tracking-[0.2em] text-ink/45">Example usage</p>
+            <pre class="mt-2 overflow-x-auto whitespace-pre-wrap font-mono text-xs leading-6 text-ink/80">${escapeHtml(item.example || item.token)}</pre>
+          </div>
+
+          <p class="mt-4 text-sm leading-6 text-ink/65">${escapeHtml(item.note || "")}</p>
         </article>
       `
     )
     .join("");
+}
+
+function openGuideModal() {
+  elements.guideModal.classList.remove("hidden");
+  document.body.classList.add("overflow-hidden");
+}
+
+function closeGuideModal() {
+  elements.guideModal.classList.add("hidden");
+  document.body.classList.remove("overflow-hidden");
 }
 
 function renderList() {
@@ -679,11 +712,21 @@ function bindEvents() {
   });
 
   elements.toggleGuide.addEventListener("click", () => {
-    elements.guideDrawer.classList.remove("hidden");
+    openGuideModal();
   });
 
   elements.closeGuide.addEventListener("click", () => {
-    elements.guideDrawer.classList.add("hidden");
+    closeGuideModal();
+  });
+
+  elements.guideBackdrop.addEventListener("click", () => {
+    closeGuideModal();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !elements.guideModal.classList.contains("hidden")) {
+      closeGuideModal();
+    }
   });
 }
 

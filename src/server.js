@@ -286,7 +286,12 @@ function formatBootstrapPayload(req, user) {
       method_color: methodColor(route.method)
     })),
     wsEvents,
-    placeholderGuide: PLACEHOLDER_GUIDE,
+    placeholderGuide: PLACEHOLDER_GUIDE.map((item) => ({
+      ...item,
+      preview: renderTemplate(item.token, {
+        username: user.username
+      })
+    })),
     stats: {
       apiCount: Number(summary.api_count ?? 0),
       wsCount: Number(summary.ws_count ?? 0),

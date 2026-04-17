@@ -27,14 +27,54 @@ const LAST_NAMES = [
 ];
 
 export const PLACEHOLDER_GUIDE = [
-  { token: "[[NAME]]", meaning: "Random first and last name" },
-  { token: "[[F_NAME]]", meaning: "Random first name" },
-  { token: "[[L_NAME]]", meaning: "Random last name" },
-  { token: "[[NUMBER_100000_999999]]", meaning: "Random number in an inclusive range" },
-  { token: "[[UUID]]", meaning: "Generated UUID" },
-  { token: "[[EMAIL]]", meaning: "Random email address" },
-  { token: "[[NOW_ISO]]", meaning: "Current ISO timestamp" },
-  { token: "[[USERNAME]]", meaning: "Current workspace username" }
+  {
+    token: "[[NAME]]",
+    meaning: "Random first and last name",
+    example: '{"customer":"[[NAME]]"}',
+    note: "Creates a full name like Avery Patel every time the template is rendered."
+  },
+  {
+    token: "[[F_NAME]]",
+    meaning: "Random first name",
+    example: '{"firstName":"[[F_NAME]]"}',
+    note: "Useful when your payload stores first and last names separately."
+  },
+  {
+    token: "[[L_NAME]]",
+    meaning: "Random last name",
+    example: '{"lastName":"[[L_NAME]]"}',
+    note: "Pairs well with [[F_NAME]] for split name fields."
+  },
+  {
+    token: "[[NUMBER_100000_999999]]",
+    meaning: "Random number in an inclusive range",
+    example: '{"otp":"[[NUMBER_100000_999999]]"}',
+    note: "Replace 100000 and 999999 with any min and max values you want."
+  },
+  {
+    token: "[[UUID]]",
+    meaning: "Generated UUID",
+    example: '{"id":"[[UUID]]"}',
+    note: "Great for request ids, resource ids, and fake references."
+  },
+  {
+    token: "[[EMAIL]]",
+    meaning: "Random email address",
+    example: '{"email":"[[EMAIL]]"}',
+    note: "Creates a fake example.com address from random name parts."
+  },
+  {
+    token: "[[NOW_ISO]]",
+    meaning: "Current ISO timestamp",
+    example: '{"createdAt":"[[NOW_ISO]]"}',
+    note: "Rendered in ISO 8601 format at request time."
+  },
+  {
+    token: "[[USERNAME]]",
+    meaning: "Current workspace username",
+    example: '{"workspace":"[[USERNAME]]"}',
+    note: "Useful when you want the active workspace name inside a response."
+  }
 ];
 
 function randomItem(values) {
@@ -63,9 +103,13 @@ export function renderTemplate(template, context = {}) {
   const source = String(template ?? "");
 
   return source.replace(/\[\[([A-Z0-9_]+)\]\]/g, (_, rawToken) => {
+    const numberMatch = rawToken.match(/^NUMBER_(\d+)_(\d+)$/);
+    if (numberMatch) {
+      return randomInteger(numberMatch[1], numberMatch[2]);
+    }
+
     if (rawToken.startsWith("NUMBER_")) {
-      const parts = rawToken.split("_");
-      return randomInteger(parts[1], parts[2]);
+      return `[[${rawToken}]]`;
     }
 
     switch (rawToken) {
