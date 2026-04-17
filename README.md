@@ -54,7 +54,7 @@ http://localhost:3000
 
 - `npm run dev` starts the app in development mode with CSS watching and server reloads
 - `npm run build` builds minified CSS and creates a production bundle in `dist/`
-- `npm start` builds CSS and starts the app from the source workspace
+- `npm start` starts the app from the source workspace using the already-built CSS asset
 - `npm run preview` runs the built app from `dist/`
 
 ## Production Build
@@ -64,6 +64,8 @@ Build the production bundle:
 ```bash
 npm run build
 ```
+
+Deploy the generated `public/assets/styles.css` file with the app. This avoids Tailwind rebuild issues on hosts that run npm scripts outside the project root.
 
 The output lands in `dist/` and includes:
 

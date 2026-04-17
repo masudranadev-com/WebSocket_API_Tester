@@ -8,10 +8,8 @@
     "dev": "concurrently -k -n STYLES,SERVER -c cyan,green \"npm:dev:styles\" \"npm:dev:server\"",
     "dev:server": "node --watch src/server.js",
     "dev:styles": "node ./node_modules/tailwindcss/lib/cli.js -c tailwind.config.cjs -i ./src/styles/tailwind.css -o ./public/assets/styles.css --watch",
-    "postinstall": "npm run build:styles",
     "build": "npm run build:styles && node scripts/build.mjs",
     "build:styles": "node ./node_modules/tailwindcss/lib/cli.js -c tailwind.config.cjs -i ./src/styles/tailwind.css -o ./public/assets/styles.css --minify",
-    "prestart": "npm run build:styles",
     "start": "node src/server.js",
     "preview": "node dist/src/server.js"
   },
