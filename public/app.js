@@ -1286,7 +1286,6 @@ function renderApiFormModal(draft, mode) {
 
                 <button type="button" data-action="add-api-response" class="primary-button">
                   ${icon("plus")}
-                  <span>Add response</span>
                 </button>
               </div>
 
