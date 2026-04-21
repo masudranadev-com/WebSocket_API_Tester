@@ -49,6 +49,14 @@ const limiter = createRateLimiter(database);
 const authAttempts = new Map();
 const publicDir = fileURLToPath(new URL("../public", import.meta.url));
 const publicAssetsDir = fileURLToPath(new URL("../public/assets", import.meta.url));
+const publicCorsMethods = HTTP_METHODS.join(", ");
+const defaultPublicCorsHeaders = [
+  "Content-Type",
+  "Authorization",
+  "X-Requested-With",
+  "X-SignalDock-Example",
+  "X-SignalDock-Response-Example"
+].join(", ");
 
 const authSchema = z.object({
   username: z
@@ -204,6 +212,21 @@ app.use(
 );
 app.use(express.static(publicDir));
 
+app.use(/^\/([^/]+)(\/.*)?$/, (req, res, next) => {
+  const username = String(req.params[0] || "");
+  if (!username || RESERVED_USERNAMES.has(username.toLowerCase())) {
+    return next();
+  }
+
+  applyPublicCors(req, res);
+
+  if (isCorsPreflightRequest(req)) {
+    return res.sendStatus(204);
+  }
+
+  next();
+});
+
 app.use((req, res, next) => {
   const sessionUserId = req.session.userId;
   if (!sessionUserId) {
@@ -233,6 +256,26 @@ function getSiteOrigin(req) {
 function absoluteUrl(req, pathname = "/") {
   const normalizedPath = pathname === "/" ? "/" : pathname.startsWith("/") ? pathname : `/${pathname}`;
   return normalizedPath === "/" ? `${getSiteOrigin(req)}/` : `${getSiteOrigin(req)}${normalizedPath}`;
+}
+
+function applyPublicCors(req, res) {
+  const requestedHeaders = req.get("Access-Control-Request-Headers");
+
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", publicCorsMethods);
+  res.setHeader("Access-Control-Allow-Headers", requestedHeaders || defaultPublicCorsHeaders);
+  res.setHeader("Access-Control-Expose-Headers", "x-signaldock-response-example");
+  res.setHeader("Access-Control-Max-Age", "86400");
+  res.append("Vary", "Origin");
+  res.append("Vary", "Access-Control-Request-Headers");
+}
+
+function isCorsPreflightRequest(req) {
+  return (
+    req.method === "OPTIONS" &&
+    Boolean(req.get("Origin")) &&
+    Boolean(req.get("Access-Control-Request-Method"))
+  );
 }
 
 function buildPageMeta(req, overrides = {}) {
