@@ -1633,10 +1633,6 @@ pre {
   background-color: rgb(255 255 255 / 0.9);
 }
 
-.bg-\[radial-gradient\(circle_at_top_left\2c rgba\(47\2c 122\2c 96\2c 0\.22\)\2c transparent_38\%\)\2c radial-gradient\(circle_at_top_right\2c rgba\(253\2c 186\2c 116\2c 0\.24\)\2c transparent_32\%\)\] {
-  background-image: radial-gradient(circle at top left,rgba(47,122,96,0.22),transparent 38%),radial-gradient(circle at top right,rgba(253,186,116,0.24),transparent 32%);
-}
-
 .p-1 {
   padding: 0.25rem;
 }
