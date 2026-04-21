@@ -17,6 +17,8 @@ import {
   buildSocketNamespace,
   buildWorkspaceUrl,
   ensureContentTypeHeader,
+  findApiResponseExample,
+  getDefaultApiResponseExample,
   isValidNamespace,
   isValidUsername,
   matchRoutePattern,
@@ -57,6 +59,16 @@ const authSchema = z.object({
   password: z.string().min(1, "Password is required.").max(128)
 });
 
+const apiResponseExampleSchema = z.object({
+  name: z.string().trim().min(1, "Response example name is required.").max(60),
+  statusCode: z.coerce.number().int().min(100).max(599),
+  contentType: z.string().trim().min(1).max(120),
+  responseBody: z.string().min(1).max(10000),
+  headersJson: z.string().max(4000).optional().default("{}"),
+  delayMs: z.coerce.number().int().min(0).max(30000).optional().default(0),
+  isDefault: z.boolean().optional().default(false)
+});
+
 const apiRouteSchema = z.object({
   method: z.enum(HTTP_METHODS),
   path: z
@@ -64,13 +76,64 @@ const apiRouteSchema = z.object({
     .min(1)
     .max(140)
     .transform(normalizeRoutePath),
-  statusCode: z.coerce.number().int().min(100).max(599),
-  contentType: z.string().trim().min(1).max(120),
-  responseBody: z.string().min(1).max(10000),
+  responses: z.array(apiResponseExampleSchema).max(12).optional(),
+  statusCode: z.coerce.number().int().min(100).max(599).optional().default(200),
+  contentType: z.string().trim().min(1).max(120).optional().default("application/json"),
+  responseBody: z.string().min(1).max(10000).optional(),
   headersJson: z.string().max(4000).optional().default("{}"),
   delayMs: z.coerce.number().int().min(0).max(30000).optional().default(0),
   isActive: z.boolean().optional().default(true),
   notes: z.string().max(160).optional().default("")
+}).superRefine((value, ctx) => {
+  const responseExamples = Array.isArray(value.responses) && value.responses.length ? value.responses : null;
+  if (!responseExamples && !value.responseBody) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["responses"],
+      message: "Add at least one response example."
+    });
+    return;
+  }
+
+  const examplesToValidate = responseExamples ?? [
+    {
+      name: "Success",
+      statusCode: value.statusCode,
+      contentType: value.contentType,
+      responseBody: value.responseBody,
+      headersJson: value.headersJson,
+      delayMs: value.delayMs,
+      isDefault: true
+    }
+  ];
+
+  const seenNames = new Set();
+  let defaultCount = 0;
+
+  examplesToValidate.forEach((responseExample, index) => {
+    const nameKey = responseExample.name.toLowerCase();
+    if (seenNames.has(nameKey)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["responses", index, "name"],
+        message: "Response example names must be unique."
+      });
+    } else {
+      seenNames.add(nameKey);
+    }
+
+    if (responseExample.isDefault) {
+      defaultCount += 1;
+    }
+  });
+
+  if (defaultCount > 1) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["responses"],
+      message: "Choose only one default response example."
+    });
+  }
 });
 
 const wsEventSchema = z.object({
@@ -244,7 +307,10 @@ function enforceAuthRateLimit(req, res, next) {
 function requireAuth(req, res, next) {
   if (!req.currentUser) {
     if (req.accepts("json")) {
-      return res.status(401).json({ error: "You need to sign in first." });
+      return res.status(401).json({
+        error: "You need to sign in first.",
+        redirectTo: "/"
+      });
     }
 
     return res.redirect("/");
@@ -256,7 +322,14 @@ function requireAuth(req, res, next) {
 function requireCsrf(req, res, next) {
   const token = req.get("x-csrf-token") || req.body.csrfToken;
   if (!req.session.csrfToken || token !== req.session.csrfToken) {
-    return res.status(403).json({ error: "Your session token is invalid. Refresh and try again." });
+    if (req.accepts("json")) {
+      return res.status(403).json({
+        error: "Your session has expired. Sign in again.",
+        redirectTo: "/"
+      });
+    }
+
+    return res.redirect("/");
   }
 
   next();
@@ -323,6 +396,58 @@ function mergeHeaders(contentType, headersJson) {
   }
 
   return ensureContentTypeHeader(JSON.stringify(parsedHeaders), contentType);
+}
+
+function buildApiResponseExamples(parsed, res) {
+  const rawResponseExamples =
+    Array.isArray(parsed.responses) && parsed.responses.length
+      ? parsed.responses
+      : [
+          {
+            name: "Success",
+            statusCode: parsed.statusCode,
+            contentType: parsed.contentType,
+            responseBody: parsed.responseBody,
+            headersJson: parsed.headersJson,
+            delayMs: parsed.delayMs,
+            isDefault: true
+          }
+        ];
+
+  const hasExplicitDefault = rawResponseExamples.some((responseExample) => responseExample.isDefault);
+  const responseExamples = [];
+
+  for (const [index, responseExample] of rawResponseExamples.entries()) {
+    const headersJson = mergeHeaders(responseExample.contentType, responseExample.headersJson);
+    if (!headersJson) {
+      res.status(400).json({
+        error: `Headers JSON must be a valid object for response example "${responseExample.name}".`
+      });
+      return null;
+    }
+
+    responseExamples.push({
+      name: responseExample.name,
+      statusCode: responseExample.statusCode,
+      contentType: responseExample.contentType,
+      responseBody: responseExample.responseBody,
+      headersJson,
+      delayMs: responseExample.delayMs,
+      isDefault: hasExplicitDefault ? Boolean(responseExample.isDefault) : index === 0
+    });
+  }
+
+  if (!responseExamples.some((responseExample) => responseExample.isDefault) && responseExamples[0]) {
+    responseExamples[0].isDefault = true;
+  }
+
+  return responseExamples;
+}
+
+function requestedApiResponseExampleName(req) {
+  const queryValue = Array.isArray(req.query.__example) ? req.query.__example[0] : req.query.__example;
+  const rawValue = queryValue || req.get("x-signaldock-example") || req.get("x-signaldock-response-example");
+  return typeof rawValue === "string" ? rawValue.trim() : "";
 }
 
 function selectMatchingRoute(candidateRoutes, requestPath) {
@@ -448,15 +573,18 @@ app.post("/dashboard/apis", requireAuth, requireCsrf, (req, res) => {
     return;
   }
 
-  const headersJson = mergeHeaders(parsed.contentType, parsed.headersJson);
-  if (!headersJson) {
-    return res.status(400).json({ error: "Headers JSON must be a valid object." });
+  const responseExamples = buildApiResponseExamples(parsed, res);
+  if (!responseExamples) {
+    return;
   }
 
   try {
     const route = database.createApiRoute(req.currentUser.id, {
-      ...parsed,
-      headersJson
+      method: parsed.method,
+      path: parsed.path,
+      responseExamples,
+      isActive: parsed.isActive,
+      notes: parsed.notes
     });
 
     res.status(201).json({
@@ -482,15 +610,18 @@ app.put("/dashboard/apis/:id", requireAuth, requireCsrf, (req, res) => {
     return res.status(404).json({ error: "API route not found." });
   }
 
-  const headersJson = mergeHeaders(parsed.contentType, parsed.headersJson);
-  if (!headersJson) {
-    return res.status(400).json({ error: "Headers JSON must be a valid object." });
+  const responseExamples = buildApiResponseExamples(parsed, res);
+  if (!responseExamples) {
+    return;
   }
 
   try {
     const route = database.updateApiRoute(req.params.id, req.currentUser.id, {
-      ...parsed,
-      headersJson
+      method: parsed.method,
+      path: parsed.path,
+      responseExamples,
+      isActive: parsed.isActive,
+      notes: parsed.notes
     });
 
     res.json({
@@ -643,21 +774,37 @@ app.all(/^\/([^/]+)(\/.*)?$/, async (req, res, next) => {
     });
   }
 
-  if (route.delay_ms > 0) {
-    await sleep(route.delay_ms);
+  const requestedExampleName = requestedApiResponseExampleName(req);
+  const responseExample = requestedExampleName
+    ? findApiResponseExample(route, requestedExampleName)
+    : getDefaultApiResponseExample(route);
+
+  if (requestedExampleName && !responseExample) {
+    return res.status(404).json({
+      error: `Response example "${requestedExampleName}" does not exist for this endpoint.`
+    });
   }
 
-  const headers = safeJsonParse(route.headers_json, {});
+  if (!responseExample) {
+    return res.status(404).json({ error: "No response example is configured for this endpoint." });
+  }
+
+  if (responseExample.delay_ms > 0) {
+    await sleep(responseExample.delay_ms);
+  }
+
+  const headers = safeJsonParse(responseExample.headers_json, {});
   for (const [headerName, headerValue] of Object.entries(headers)) {
     res.setHeader(headerName, String(headerValue));
   }
+  res.setHeader("x-signaldock-response-example", responseExample.name);
 
-  const responseBody = renderTemplate(route.response_body, {
+  const responseBody = renderTemplate(responseExample.response_body, {
     username: user.username
   });
 
-  database.recordApiHit(route.id, req.ip, req.method, route.status_code);
-  res.status(route.status_code).send(responseBody);
+  database.recordApiHit(route.id, req.ip, req.method, responseExample.status_code, responseExample.name);
+  res.status(responseExample.status_code).send(responseBody);
 });
 
 const workspaceNamespaces = io.of(/^\/[^/]+(?:\/[a-z0-9-]+)*$/i);

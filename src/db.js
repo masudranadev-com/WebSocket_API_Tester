@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { getApiResponseExamples, getDefaultApiResponseExample } from "./utils.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -20,7 +21,7 @@ function createEmptyState() {
   return {
     meta: {
       format: "signaldock-json",
-      version: 1
+      version: 2
     },
     counters: {
       users: 0,
@@ -41,17 +42,19 @@ function createEmptyState() {
 
 function normalizeState(parsed) {
   const empty = createEmptyState();
+  const rawApiRoutes = Array.isArray(parsed?.apiRoutes) ? parsed.apiRoutes : [];
   return {
     meta: {
       ...empty.meta,
-      ...(parsed?.meta && typeof parsed.meta === "object" ? parsed.meta : {})
+      ...(parsed?.meta && typeof parsed.meta === "object" ? parsed.meta : {}),
+      version: 2
     },
     counters: {
       ...empty.counters,
       ...(parsed?.counters && typeof parsed.counters === "object" ? parsed.counters : {})
     },
     users: Array.isArray(parsed?.users) ? parsed.users : [],
-    apiRoutes: Array.isArray(parsed?.apiRoutes) ? parsed.apiRoutes : [],
+    apiRoutes: rawApiRoutes.map(normalizeApiRouteRecord),
     wsEvents: Array.isArray(parsed?.wsEvents) ? parsed.wsEvents : [],
     requestLogs: Array.isArray(parsed?.requestLogs) ? parsed.requestLogs : [],
     wsLogs: Array.isArray(parsed?.wsLogs) ? parsed.wsLogs : [],
@@ -98,11 +101,11 @@ function nextId(counterName) {
 }
 
 function cloneRow(row) {
-  return row ? { ...row } : null;
+  return row ? structuredClone(row) : null;
 }
 
 function cloneRows(rows) {
-  return rows.map((row) => ({ ...row }));
+  return rows.map((row) => structuredClone(row));
 }
 
 function normalizeId(value) {
@@ -131,6 +134,31 @@ function sortByPathLengthDesc(left, right) {
   }
 
   return Number(right.id) - Number(left.id);
+}
+
+function normalizeApiRouteRecord(route) {
+  const responseExamples = getApiResponseExamples(route);
+  const defaultExample = getDefaultApiResponseExample({ ...route, response_examples: responseExamples });
+
+  return {
+    ...route,
+    response_examples: responseExamples,
+    status_code: Number(defaultExample?.status_code ?? 200),
+    content_type: defaultExample?.content_type ?? "application/json",
+    response_body: defaultExample?.response_body ?? "",
+    headers_json: defaultExample?.headers_json ?? "{}",
+    delay_ms: Number(defaultExample?.delay_ms ?? 0),
+    is_active: Number(route?.is_active ? 1 : 0),
+    notes: String(route?.notes ?? ""),
+    hit_count: Number(route?.hit_count ?? 0),
+    last_hit_at: route?.last_hit_at ?? null,
+    created_at: route?.created_at ?? new Date().toISOString(),
+    updated_at: route?.updated_at ?? route?.created_at ?? new Date().toISOString()
+  };
+}
+
+function normalizeApiResponseExamplesForStorage(examples) {
+  return getApiResponseExamples({ response_examples: examples });
 }
 
 function save() {
@@ -247,16 +275,19 @@ export function createApiRoute(userId, payload) {
   }
 
   const now = new Date().toISOString();
+  const responseExamples = normalizeApiResponseExamplesForStorage(payload.responseExamples);
+  const defaultExample = getDefaultApiResponseExample({ response_examples: responseExamples });
   const route = {
     id: nextId("apiRoutes"),
     user_id: normalizedUserId,
     method: payload.method,
     path: payload.path,
-    status_code: payload.statusCode,
-    content_type: payload.contentType,
-    response_body: payload.responseBody,
-    headers_json: payload.headersJson,
-    delay_ms: payload.delayMs,
+    status_code: Number(defaultExample?.status_code ?? 200),
+    content_type: defaultExample?.content_type ?? "application/json",
+    response_body: defaultExample?.response_body ?? "",
+    headers_json: defaultExample?.headers_json ?? "{}",
+    delay_ms: Number(defaultExample?.delay_ms ?? 0),
+    response_examples: responseExamples,
     is_active: payload.isActive ? 1 : 0,
     notes: payload.notes,
     hit_count: 0,
@@ -293,13 +324,16 @@ export function updateApiRoute(routeId, userId, payload) {
     throw createUniqueConstraintError("UNIQUE constraint failed: api_routes.user_id, api_routes.method, api_routes.path");
   }
 
+  const responseExamples = normalizeApiResponseExamplesForStorage(payload.responseExamples);
+  const defaultExample = getDefaultApiResponseExample({ response_examples: responseExamples });
   route.method = payload.method;
   route.path = payload.path;
-  route.status_code = payload.statusCode;
-  route.content_type = payload.contentType;
-  route.response_body = payload.responseBody;
-  route.headers_json = payload.headersJson;
-  route.delay_ms = payload.delayMs;
+  route.status_code = Number(defaultExample?.status_code ?? 200);
+  route.content_type = defaultExample?.content_type ?? "application/json";
+  route.response_body = defaultExample?.response_body ?? "";
+  route.headers_json = defaultExample?.headers_json ?? "{}";
+  route.delay_ms = Number(defaultExample?.delay_ms ?? 0);
+  route.response_examples = responseExamples;
   route.is_active = payload.isActive ? 1 : 0;
   route.notes = payload.notes;
   route.updated_at = new Date().toISOString();
@@ -325,7 +359,7 @@ export function deleteApiRoute(routeId, userId) {
   return true;
 }
 
-export function recordApiHit(routeId, ipAddress, method, statusCode) {
+export function recordApiHit(routeId, ipAddress, method, statusCode, responseExampleName = null) {
   const normalizedRouteId = normalizeId(routeId);
   const route = state.apiRoutes.find((row) => Number(row.id) === normalizedRouteId);
   if (!route) {
@@ -342,6 +376,7 @@ export function recordApiHit(routeId, ipAddress, method, statusCode) {
     ip_address: ipAddress,
     request_method: method,
     status_code: Number(statusCode),
+    response_example_name: responseExampleName ? String(responseExampleName) : null,
     hit_at: hitAt
   });
 

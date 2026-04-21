@@ -8,369 +8,206 @@
     data-csrf-token="<%= csrfToken %>"
   >
     <div class="pointer-events-none fixed inset-0 overflow-hidden">
-      <div class="absolute left-0 top-12 h-72 w-72 rounded-full bg-accent/12 blur-3xl"></div>
-      <div class="absolute right-[-4rem] top-28 h-96 w-96 rounded-full bg-orange-200/30 blur-3xl"></div>
-      <div class="dashboard-grid absolute inset-0 opacity-50"></div>
+      <div class="absolute left-[-5rem] top-[-3rem] h-80 w-80 rounded-full bg-accent/18 blur-3xl"></div>
+      <div class="absolute right-[-6rem] top-24 h-[26rem] w-[26rem] rounded-full bg-amber-300/20 blur-3xl"></div>
+      <div class="absolute bottom-[-8rem] left-1/3 h-[24rem] w-[24rem] rounded-full bg-emerald-200/30 blur-3xl"></div>
+      <div class="dashboard-grid absolute inset-0 opacity-60"></div>
     </div>
 
     <main class="relative mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-      <header class="sticky top-4 z-20 rounded-[2rem] border border-ink/10 bg-panel/85 px-5 py-4 shadow-shell backdrop-blur">
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div class="flex items-center gap-4">
-            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-ink text-lg font-bold text-white">SD</div>
-            <div>
-              <p class="font-mono text-xs uppercase tracking-[0.28em] text-ink/45">SignalDock</p>
-              <h1 class="text-2xl font-semibold">Workspace <span class="text-accent"><%= username %></span></h1>
+      <header class="surface-panel sticky top-3 z-30 overflow-visible px-4 py-5 sm:px-6">
+        <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(47,122,96,0.22),transparent_38%),radial-gradient(circle_at_top_right,rgba(253,186,116,0.24),transparent_32%)]"></div>
+
+        <div class="relative flex gap-5 flex-row items-start justify-between">
+          <div class="flex items-start gap-4">
+            <div class="brand-badge">
+              <span class="text-lg font-bold text-white">SD</span>
             </div>
           </div>
 
-          <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div class="rounded-2xl border border-ink/10 bg-white/80 px-4 py-3">
-              <p class="text-xs uppercase tracking-[0.25em] text-ink/45">Public base URL</p>
-              <div class="mt-1 flex items-center gap-3">
-                <span id="workspace-url" class="font-mono text-sm"><%= workspaceUrl %></span>
-                <button
-                  id="copy-workspace-url"
-                  type="button"
-                  class="rounded-xl bg-accentSoft px-3 py-2 text-xs font-semibold text-accent transition hover:bg-accent hover:text-white"
-                >
-                  Copy
-                </button>
-              </div>
-            </div>
+          <div id="header-menu-shell" class="relative self-start xl:self-center">
+            <button
+              id="header-menu-toggle"
+              type="button"
+              class="header-menu-button"
+              aria-haspopup="true"
+              aria-expanded="false"
+              aria-controls="header-menu-panel"
+            >
+              <span class="header-menu-glyph">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M4 7h16"></path>
+                  <path d="M7 12h13"></path>
+                  <path d="M10 17h10"></path>
+                </svg>
+              </span>
 
-            <div class="flex flex-col gap-3 sm:flex-row">
-              <button
-                id="toggle-guide"
-                type="button"
-                class="inline-flex items-center justify-center rounded-2xl border border-ink/10 bg-white/80 px-4 py-3 text-sm font-semibold transition hover:bg-white"
-              >
-                Open pattern guide
+              <span class="min-w-0 text-left">
+                <span class="block text-[11px] uppercase tracking-[0.28em] text-ink/42"><%= username %></span>
+                <span class="mt-1 block text-sm font-semibold text-ink">Menu</span>
+              </span>
+
+              <span class="header-menu-caret">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="m6 9 6 6 6-6"></path>
+                </svg>
+              </span>
+            </button>
+
+            <div id="header-menu-panel" class="header-menu-panel hidden">
+              <button id="copy-workspace-base" type="button" class="header-menu-item">
+                <span class="header-menu-item-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="9" y="9" width="11" height="11" rx="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                </span>
+                <span>
+                  <span class="block text-sm font-semibold text-ink">Copy base URL</span>
+                  <span class="mt-1 block text-xs leading-5 text-ink/55">Grab the workspace base address instantly.</span>
+                </span>
               </button>
 
-              <button
-                id="logout-button"
-                type="button"
-                class="inline-flex items-center justify-center rounded-2xl border border-ink/10 bg-white/80 px-4 py-3 text-sm font-semibold transition hover:bg-white"
-              >
-                Log out
+              <button id="toggle-guide" type="button" class="header-menu-item">
+                <span class="header-menu-item-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 6v12"></path>
+                    <path d="M6 12h12"></path>
+                    <circle cx="12" cy="12" r="9"></circle>
+                  </svg>
+                </span>
+                <span>
+                  <span class="block text-sm font-semibold text-ink">Pattern guide</span>
+                  <span class="mt-1 block text-xs leading-5 text-ink/55">Open the placeholder examples and previews.</span>
+                </span>
+              </button>
+
+              <button id="logout-button" type="button" class="header-menu-item header-menu-item-danger">
+                <span class="header-menu-item-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <path d="m16 17 5-5-5-5"></path>
+                    <path d="M21 12H9"></path>
+                  </svg>
+                </span>
+                <span>
+                  <span class="block text-sm font-semibold">Log out</span>
+                  <span class="mt-1 block text-xs leading-5 text-current/75">Leave the workspace safely.</span>
+                </span>
               </button>
             </div>
           </div>
         </div>
       </header>
 
-      <section class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <div class="rounded-[1.75rem] border border-ink/10 bg-panel/90 p-5 shadow-shell">
+      <section class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <article class="metric-card">
           <p class="text-xs uppercase tracking-[0.24em] text-ink/45">API routes</p>
           <p id="stat-api-count" class="mt-4 text-4xl font-bold">0</p>
-        </div>
-        <div class="rounded-[1.75rem] border border-ink/10 bg-panel/90 p-5 shadow-shell">
+        </article>
+
+        <article class="metric-card">
           <p class="text-xs uppercase tracking-[0.24em] text-ink/45">WS events</p>
           <p id="stat-ws-count" class="mt-4 text-4xl font-bold">0</p>
-        </div>
-        <div class="rounded-[1.75rem] border border-ink/10 bg-panel/90 p-5 shadow-shell">
+        </article>
+
+        <article class="metric-card">
           <p class="text-xs uppercase tracking-[0.24em] text-ink/45">REST hits</p>
           <p id="stat-api-hits" class="mt-4 text-4xl font-bold">0</p>
-        </div>
-        <div class="rounded-[1.75rem] border border-ink/10 bg-panel/90 p-5 shadow-shell">
+        </article>
+
+        <article class="metric-card">
           <p class="text-xs uppercase tracking-[0.24em] text-ink/45">WS triggers</p>
           <p id="stat-ws-triggers" class="mt-4 text-4xl font-bold">0</p>
-        </div>
-        <div class="rounded-[1.75rem] border border-ink/10 bg-panel/90 p-5 shadow-shell">
+        </article>
+
+        <article class="metric-card">
           <p class="text-xs uppercase tracking-[0.24em] text-ink/45">Blocked IPs</p>
           <p id="stat-blocked-ips" class="mt-4 text-4xl font-bold">0</p>
           <p id="stat-blocked-at" class="mt-3 text-sm text-ink/55">No active blocks</p>
-        </div>
+        </article>
       </section>
 
-      <section class="mt-6 rounded-[2rem] border border-ink/10 bg-panel/85 p-4 shadow-shell backdrop-blur lg:p-5">
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div class="inline-flex rounded-2xl border border-ink/10 bg-[#f5f1e8] p-1">
-            <button id="tab-apis" type="button" class="dashboard-tab active rounded-xl px-4 py-2 text-sm font-semibold">APIs</button>
-            <button id="tab-ws" type="button" class="dashboard-tab rounded-xl px-4 py-2 text-sm font-semibold">WebSocket</button>
+      <section class="surface-panel mt-6 p-4 sm:p-5 lg:p-6">
+        <div class="flex gap-4 flex-row items-center justify-between">
+          <div class="inline-flex rounded-[1.35rem] border border-ink/10 bg-white/80 p-1 shadow-sm">
+            <button id="tab-apis" type="button" class="segment-button active">APIs</button>
+            <button id="tab-ws" type="button" class="segment-button">WebSocket</button>
           </div>
 
-          <label class="relative block">
-            <span class="sr-only">Search</span>
-            <input
-              id="list-search"
-              type="search"
-              placeholder="Search path, method, namespace, or event"
-              class="w-full rounded-2xl border border-ink/10 bg-white/90 px-4 py-3 pr-11 text-sm outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10 sm:w-80"
-            />
-          </label>
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <label class="relative block w-full sm:w-80">
+              <span class="sr-only">Search records</span>
+              <input
+                id="record-search"
+                type="search"
+                placeholder="Search endpoint, method, namespace, or event"
+                class="input-shell w-full pr-12"
+              />
+            </label>
+
+            <button id="create-record" type="button" class="primary-button whitespace-nowrap">
+              Create API
+            </button>
+          </div>
         </div>
 
-        <div class="mt-5 grid gap-5 xl:grid-cols-[340px_minmax(0,1fr)]">
-          <aside class="rounded-[1.75rem] border border-ink/10 bg-[#f7f4ec] p-4">
-            <div class="flex items-center justify-between gap-3">
-              <div>
-                <p id="list-heading-eyebrow" class="text-xs uppercase tracking-[0.24em] text-ink/45">APIs</p>
-                <h2 id="list-heading-title" class="mt-2 text-xl font-semibold">Routes</h2>
-              </div>
-              <button
-                id="new-item"
-                type="button"
-                class="inline-flex items-center justify-center rounded-2xl bg-ink px-3 py-2 text-sm font-semibold text-white transition hover:bg-ink/90"
-              >
-                New
-              </button>
-            </div>
+        <div id="feedback" class="mt-4 hidden rounded-[1.35rem] border px-4 py-3 text-sm"></div>
 
-            <div id="list-container" class="mt-4 space-y-3"></div>
-          </aside>
-
-          <section class="space-y-5">
-            <div id="feedback" class="hidden rounded-2xl border px-4 py-3 text-sm"></div>
-
-            <section id="api-editor" class="space-y-5">
-              <div class="rounded-[1.75rem] border border-ink/10 bg-white p-5">
-                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <p class="text-xs uppercase tracking-[0.24em] text-ink/45">REST route</p>
-                    <h2 id="api-form-title" class="mt-2 text-2xl font-semibold">Create an API endpoint</h2>
-                  </div>
-                  <div class="rounded-2xl bg-accentSoft px-4 py-2 text-sm font-medium text-accent">100 req/min per IP</div>
-                </div>
-
-                <form id="api-form" class="mt-6 grid gap-4">
-                  <div class="grid gap-4 md:grid-cols-[140px_minmax(0,1fr)]">
-                    <label class="space-y-2">
-                      <span class="text-sm font-medium text-ink/80">Method</span>
-                      <select id="api-method" class="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm outline-none focus:border-accent focus:ring-4 focus:ring-accent/10">
-                        <option>GET</option>
-                        <option>POST</option>
-                        <option>PUT</option>
-                        <option>PATCH</option>
-                        <option>DELETE</option>
-                        <option>OPTIONS</option>
-                        <option>HEAD</option>
-                      </select>
-                    </label>
-                    <label class="space-y-2">
-                      <span class="text-sm font-medium text-ink/80">Path</span>
-                      <input id="api-path" class="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 font-mono text-sm outline-none focus:border-accent focus:ring-4 focus:ring-accent/10" placeholder="/orders/:orderId" />
-                    </label>
-                  </div>
-
-                  <label class="space-y-2">
-                    <span class="text-sm font-medium text-ink/80">Response body</span>
-                    <textarea id="api-response-body" class="min-h-[220px] w-full rounded-[1.5rem] border border-ink/10 bg-[#f9f6ef] px-4 py-4 font-mono text-sm outline-none focus:border-accent focus:ring-4 focus:ring-accent/10" placeholder='{"orderId":"[[UUID]]","customer":"[[NAME]]","otp":"[[NUMBER_100000_999999]]"}'></textarea>
-                  </label>
-
-                  <div class="grid gap-4 md:grid-cols-2">
-                    <label class="space-y-2">
-                      <span class="text-sm font-medium text-ink/80">Status code</span>
-                      <input id="api-status-code" type="number" min="100" max="599" class="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm outline-none focus:border-accent focus:ring-4 focus:ring-accent/10" />
-                    </label>
-                    <label class="space-y-2">
-                      <span class="text-sm font-medium text-ink/80">Content type</span>
-                      <input id="api-content-type" class="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm outline-none focus:border-accent focus:ring-4 focus:ring-accent/10" placeholder="application/json" />
-                    </label>
-                  </div>
-
-                  <label class="space-y-2">
-                    <span class="text-sm font-medium text-ink/80">Notes</span>
-                    <input id="api-notes" class="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm outline-none focus:border-accent focus:ring-4 focus:ring-accent/10" placeholder="Optional label or teammate note" />
-                  </label>
-
-                  <details class="rounded-[1.5rem] border border-ink/10 bg-[#f6f3eb] p-4">
-                    <summary class="cursor-pointer text-sm font-semibold">Advanced settings</summary>
-                    <div class="mt-4 grid gap-4">
-                      <label class="space-y-2">
-                        <span class="text-sm font-medium text-ink/80">Headers JSON</span>
-                        <textarea id="api-headers-json" class="min-h-[140px] w-full rounded-[1.25rem] border border-ink/10 bg-white px-4 py-4 font-mono text-sm outline-none focus:border-accent focus:ring-4 focus:ring-accent/10" placeholder='{"Cache-Control":"no-store"}'></textarea>
-                      </label>
-                      <div class="grid gap-4 md:grid-cols-2">
-                        <label class="space-y-2">
-                          <span class="text-sm font-medium text-ink/80">Delay (ms)</span>
-                          <input id="api-delay-ms" type="number" min="0" max="30000" class="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm outline-none focus:border-accent focus:ring-4 focus:ring-accent/10" />
-                        </label>
-                        <label class="flex items-center gap-3 rounded-2xl border border-ink/10 bg-white px-4 py-3">
-                          <input id="api-is-active" type="checkbox" class="h-5 w-5 rounded border-ink/20 text-accent focus:ring-accent" />
-                          <span class="text-sm font-medium text-ink/80">Route is active</span>
-                        </label>
-                      </div>
-                    </div>
-                  </details>
-
-                  <div class="flex flex-col gap-3 border-t border-ink/10 pt-4 sm:flex-row">
-                    <button type="submit" class="inline-flex items-center justify-center rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-ink/90">Save API</button>
-                    <button id="delete-api" type="button" class="inline-flex items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100">Delete</button>
-                  </div>
-                </form>
-              </div>
-
-              <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
-                <div class="rounded-[1.75rem] border border-ink/10 bg-white p-5">
-                  <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p class="text-xs uppercase tracking-[0.24em] text-ink/45">Test panel</p>
-                      <h3 class="mt-2 text-xl font-semibold">Try the public endpoint</h3>
-                    </div>
-                    <button id="copy-api-url" type="button" class="rounded-2xl bg-accentSoft px-3 py-2 text-sm font-semibold text-accent transition hover:bg-accent hover:text-white">Copy URL</button>
-                  </div>
-
-                  <p id="api-public-url" class="mt-4 break-all rounded-2xl bg-[#f7f3ea] px-4 py-3 font-mono text-sm"></p>
-
-                  <label class="mt-4 block space-y-2">
-                    <span class="text-sm font-medium text-ink/80">Test request body</span>
-                    <textarea id="api-test-body" class="min-h-[120px] w-full rounded-[1.25rem] border border-ink/10 bg-[#f9f6ef] px-4 py-4 font-mono text-sm outline-none focus:border-accent focus:ring-4 focus:ring-accent/10" placeholder='{"demo":true}'></textarea>
-                  </label>
-
-                  <div class="mt-4 flex flex-col gap-3 sm:flex-row">
-                    <button id="run-api-test" type="button" class="inline-flex items-center justify-center rounded-2xl bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-accent/90">Run test</button>
-                    <button id="copy-api-curl" type="button" class="inline-flex items-center justify-center rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm font-semibold transition hover:bg-[#f8f6f0]">Copy curl</button>
-                  </div>
-
-                  <pre id="api-test-result" class="mt-4 min-h-[180px] overflow-auto rounded-[1.25rem] bg-ink px-4 py-4 font-mono text-sm text-white"></pre>
-                </div>
-
-                <aside class="space-y-5">
-                  <div class="rounded-[1.75rem] border border-ink/10 bg-white p-5">
-                    <p class="text-xs uppercase tracking-[0.24em] text-ink/45">Route analytics</p>
-                    <div class="mt-4 space-y-4">
-                      <div>
-                        <p class="text-sm text-ink/55">Total hits</p>
-                        <p id="api-hit-count" class="mt-1 text-3xl font-bold">0</p>
-                      </div>
-                      <div>
-                        <p class="text-sm text-ink/55">Last hit</p>
-                        <p id="api-last-hit" class="mt-1 text-sm font-medium">No traffic yet</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="rounded-[1.75rem] border border-ink/10 bg-white p-5">
-                    <p class="text-xs uppercase tracking-[0.24em] text-ink/45">Quick note</p>
-                    <p class="mt-4 text-sm leading-6 text-ink/65">
-                      Dynamic patterns are rendered when the request arrives, not when you save the route. Use the pattern guide button for syntax examples.
-                    </p>
-                  </div>
-                </aside>
-              </div>
-            </section>
-
-            <section id="ws-editor" class="hidden space-y-5">
-              <div class="rounded-[1.75rem] border border-ink/10 bg-white p-5">
-                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <p class="text-xs uppercase tracking-[0.24em] text-ink/45">Realtime event</p>
-                    <h2 id="ws-form-title" class="mt-2 text-2xl font-semibold">Create a WebSocket event</h2>
-                  </div>
-                  <div class="rounded-2xl bg-accentSoft px-4 py-2 text-sm font-medium text-accent">Socket.IO namespace</div>
-                </div>
-
-                <form id="ws-form" class="mt-6 grid gap-4">
-                  <label class="space-y-2">
-                    <span class="text-sm font-medium text-ink/80">Namespace</span>
-                    <input id="ws-namespace" class="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 font-mono text-sm outline-none focus:border-accent focus:ring-4 focus:ring-accent/10" placeholder="/orders" />
-                  </label>
-
-                  <label class="space-y-2">
-                    <span class="text-sm font-medium text-ink/80">Event name</span>
-                    <input id="ws-event-name" class="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 font-mono text-sm outline-none focus:border-accent focus:ring-4 focus:ring-accent/10" placeholder="order.created" />
-                  </label>
-
-                  <label class="space-y-2">
-                    <span class="text-sm font-medium text-ink/80">Payload template</span>
-                    <textarea id="ws-payload-template" class="min-h-[220px] w-full rounded-[1.5rem] border border-ink/10 bg-[#f9f6ef] px-4 py-4 font-mono text-sm outline-none focus:border-accent focus:ring-4 focus:ring-accent/10" placeholder='{"id":"[[UUID]]","customer":"[[NAME]]","sequence":"[[NUMBER_100000_999999]]"}'></textarea>
-                  </label>
-
-                  <label class="space-y-2">
-                    <span class="text-sm font-medium text-ink/80">Notes</span>
-                    <input id="ws-notes" class="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm outline-none focus:border-accent focus:ring-4 focus:ring-accent/10" placeholder="Optional event purpose" />
-                  </label>
-
-                  <label class="flex items-center gap-3 rounded-2xl border border-ink/10 bg-[#f7f4ec] px-4 py-3">
-                    <input id="ws-is-active" type="checkbox" class="h-5 w-5 rounded border-ink/20 text-accent focus:ring-accent" />
-                    <span class="text-sm font-medium text-ink/80">Event is active</span>
-                  </label>
-
-                  <div class="flex flex-col gap-3 border-t border-ink/10 pt-4 sm:flex-row">
-                    <button type="submit" class="inline-flex items-center justify-center rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-ink/90">Save event</button>
-                    <button id="delete-ws" type="button" class="inline-flex items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100">Delete</button>
-                  </div>
-                </form>
-              </div>
-
-              <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
-                <div class="rounded-[1.75rem] border border-ink/10 bg-white p-5">
-                  <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p class="text-xs uppercase tracking-[0.24em] text-ink/45">Trigger panel</p>
-                      <h3 class="mt-2 text-xl font-semibold">Broadcast payload</h3>
-                    </div>
-                    <button id="copy-ws-snippet" type="button" class="rounded-2xl bg-accentSoft px-3 py-2 text-sm font-semibold text-accent transition hover:bg-accent hover:text-white">Copy client snippet</button>
-                  </div>
-
-                  <p id="ws-namespace-preview" class="mt-4 break-all rounded-2xl bg-[#f7f3ea] px-4 py-3 font-mono text-sm"></p>
-
-                  <div class="mt-4 flex flex-col gap-3 sm:flex-row">
-                    <button id="trigger-ws" type="button" class="inline-flex items-center justify-center rounded-2xl bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-accent/90">Trigger event</button>
-                    <button id="copy-ws-payload" type="button" class="inline-flex items-center justify-center rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm font-semibold transition hover:bg-[#f8f6f0]">Copy payload</button>
-                  </div>
-
-                  <pre id="ws-trigger-result" class="mt-4 min-h-[180px] overflow-auto rounded-[1.25rem] bg-ink px-4 py-4 font-mono text-sm text-white"></pre>
-                </div>
-
-                <aside class="space-y-5">
-                  <div class="rounded-[1.75rem] border border-ink/10 bg-white p-5">
-                    <p class="text-xs uppercase tracking-[0.24em] text-ink/45">Event analytics</p>
-                    <div class="mt-4 space-y-4">
-                      <div>
-                        <p class="text-sm text-ink/55">Total triggers</p>
-                        <p id="ws-trigger-count" class="mt-1 text-3xl font-bold">0</p>
-                      </div>
-                      <div>
-                        <p class="text-sm text-ink/55">Last trigger</p>
-                        <p id="ws-last-trigger" class="mt-1 text-sm font-medium">No triggers yet</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="rounded-[1.75rem] border border-ink/10 bg-white p-5">
-                    <p class="text-xs uppercase tracking-[0.24em] text-ink/45">Client connection</p>
-                    <p class="mt-4 text-sm leading-6 text-ink/65">
-                      Connect with Socket.IO to the namespace shown here, then listen for the event name you configured.
-                    </p>
-                  </div>
-                </aside>
-              </div>
-            </section>
-          </section>
+        <div class="mt-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p id="records-eyebrow" class="text-xs uppercase tracking-[0.24em] text-ink/45">APIs</p>
+            <h2 id="records-title" class="mt-2 text-2xl font-semibold">All mock API endpoints</h2>
+          </div>
+          <p id="records-summary" class="text-sm text-ink/55"></p>
         </div>
+
+        <div id="records-grid" class="mt-5 grid gap-4 xl:grid-cols-2"></div>
       </section>
     </main>
 
-    <div id="guide-modal" class="fixed inset-0 z-40 hidden">
-      <div id="guide-backdrop" class="absolute inset-0 bg-ink/35 backdrop-blur-sm"></div>
+    <div id="entity-modal" class="fixed inset-0 z-40 hidden">
+      <div id="entity-modal-backdrop" class="absolute inset-0 bg-ink/55 backdrop-blur-sm"></div>
 
-      <div class="relative flex min-h-full items-center justify-center p-4 sm:p-6">
-        <section class="relative max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-[2rem] border border-ink/10 bg-panel/95 shadow-shell backdrop-blur">
+      <div class="relative flex min-h-full items-end justify-center p-3 sm:items-center sm:p-6">
+        <section
+          id="entity-modal-panel"
+          class="max-h-[94vh] w-full max-w-6xl overflow-hidden rounded-[2rem] border border-white/45 bg-panel shadow-shell"
+        ></section>
+      </div>
+    </div>
+
+    <div id="guide-modal" class="fixed inset-0 z-50 hidden">
+      <div id="guide-backdrop" class="absolute inset-0 bg-ink/55 backdrop-blur-sm"></div>
+
+      <div class="relative flex min-h-full items-end justify-center p-3 sm:items-center sm:p-6">
+        <section class="max-h-[92vh] w-full max-w-5xl overflow-hidden rounded-[2rem] border border-white/45 bg-panel shadow-shell">
           <div class="grid gap-0 lg:grid-cols-[320px_minmax(0,1fr)]">
-            <div class="border-b border-ink/10 bg-[#f7f1e3] p-6 lg:border-b-0 lg:border-r">
-              <p class="text-xs uppercase tracking-[0.24em] text-ink/45">Template helper</p>
-              <h2 class="mt-3 text-3xl font-semibold">Pattern guide popup</h2>
+            <aside class="border-b border-ink/10 bg-[#edf5ef] p-6 lg:border-b-0 lg:border-r">
+              <p class="text-xs uppercase tracking-[0.24em] text-ink/45">Template guide</p>
+              <h2 class="mt-3 text-3xl font-semibold leading-tight">Dynamic response patterns</h2>
               <p class="mt-4 text-sm leading-7 text-ink/68">
-                Use these patterns inside your API responses and WebSocket payloads. Each one is rendered live when a request arrives or an event is triggered.
+                Use these placeholders in API response examples and WebSocket payloads. SignalDock renders them live when the route is hit or the event is triggered.
               </p>
-              <div class="mt-6 rounded-[1.5rem] border border-ink/10 bg-white/80 p-4">
-                <p class="text-xs uppercase tracking-[0.2em] text-ink/45">Common examples</p>
-                <div class="mt-3 space-y-3 font-mono text-sm text-ink/80">
-                  <p>[[NAME]]</p>
-                  <p>[[NUMBER_100000_999999]]</p>
+
+              <div class="mt-6 rounded-[1.5rem] border border-ink/10 bg-white/85 p-4">
+                <p class="text-xs uppercase tracking-[0.2em] text-ink/45">Popular patterns</p>
+                <div class="mt-3 space-y-3 font-mono text-sm text-ink/78">
+                  <p>[[USERNAME]]</p>
                   <p>[[UUID]]</p>
+                  <p>[[NUMBER_100000_999999]]</p>
                 </div>
               </div>
-            </div>
+            </aside>
 
-            <div class="flex max-h-[90vh] flex-col">
+            <div class="flex max-h-[92vh] flex-col">
               <div class="flex items-start justify-between gap-4 border-b border-ink/10 px-6 py-5">
                 <div>
-                  <p class="text-xs uppercase tracking-[0.24em] text-ink/45">Available patterns</p>
-                  <p class="mt-2 text-sm text-ink/65">Click outside the popup or use the close button when you're done.</p>
+                  <p class="text-xs uppercase tracking-[0.24em] text-ink/45">Available placeholders</p>
+                  <p class="mt-2 text-sm text-ink/65">Close this panel when you are done.</p>
                 </div>
-                <button id="close-guide" type="button" class="rounded-2xl border border-ink/10 px-4 py-2 text-sm font-semibold transition hover:bg-white">
+
+                <button id="close-guide" type="button" class="secondary-button">
                   Close
                 </button>
               </div>
