@@ -1284,9 +1284,7 @@ function renderApiFormModal(draft, mode) {
                   <p class="mt-2 text-sm leading-6 text-ink/62">Each response can use its own name, status code, headers, delay, and body.</p>
                 </div>
 
-                <button type="button" data-action="add-api-response" class="primary-button">
-                  ${icon("plus")}
-                </button>
+                <button type="button" data-action="add-api-response" class="primary-button">+</button>
               </div>
 
               <div class="mt-4 space-y-4">
