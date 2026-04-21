@@ -14,6 +14,32 @@ const METHOD_PILL_CLASSES = {
   cyan: "bg-cyan-100 text-cyan-700"
 };
 
+const TEMPLATE_FIRST_NAMES = [
+  "Avery",
+  "Mila",
+  "Kai",
+  "Noah",
+  "Leila",
+  "Rowan",
+  "Iris",
+  "Theo",
+  "Nadia",
+  "Owen"
+];
+
+const TEMPLATE_LAST_NAMES = [
+  "Kins",
+  "Harper",
+  "Rahman",
+  "Torres",
+  "Blake",
+  "Chowdhury",
+  "Patel",
+  "Morales",
+  "Nguyen",
+  "Ahmed"
+];
+
 const state = {
   activeTab: "apis",
   search: "",
@@ -69,6 +95,121 @@ function createClientId() {
   }
 
   return `cid-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+}
+
+function createUuid() {
+  if (window.crypto?.randomUUID) {
+    return window.crypto.randomUUID();
+  }
+
+  const bytes = new Uint8Array(16);
+  if (window.crypto?.getRandomValues) {
+    window.crypto.getRandomValues(bytes);
+  } else {
+    for (let index = 0; index < bytes.length; index += 1) {
+      bytes[index] = Math.floor(Math.random() * 256);
+    }
+  }
+
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+
+  const hex = Array.from(bytes, (value) => value.toString(16).padStart(2, "0"));
+  return `${hex.slice(0, 4).join("")}-${hex.slice(4, 6).join("")}-${hex.slice(6, 8).join("")}-${hex.slice(8, 10).join("")}-${hex.slice(10, 16).join("")}`;
+}
+
+function randomItem(values) {
+  return values[Math.floor(Math.random() * values.length)];
+}
+
+function randomName() {
+  return {
+    first: randomItem(TEMPLATE_FIRST_NAMES),
+    last: randomItem(TEMPLATE_LAST_NAMES)
+  };
+}
+
+function randomInteger(min, max) {
+  const low = Number(min);
+  const high = Number(max);
+
+  if (!Number.isFinite(low) || !Number.isFinite(high) || high < low) {
+    return "";
+  }
+
+  return String(Math.floor(Math.random() * (high - low + 1)) + low);
+}
+
+function decimalPlaces(value) {
+  const source = String(value ?? "");
+  if (!source.includes(".")) {
+    return 0;
+  }
+
+  return source.split(".")[1].length;
+}
+
+function randomNumberInRange(min, max) {
+  const precision = Math.max(decimalPlaces(min), decimalPlaces(max));
+  if (precision === 0) {
+    return randomInteger(min, max);
+  }
+
+  const scale = 10 ** precision;
+  const low = Math.round(Number(min) * scale);
+  const high = Math.round(Number(max) * scale);
+
+  if (!Number.isFinite(low) || !Number.isFinite(high) || high < low) {
+    return "";
+  }
+
+  const value = Math.floor(Math.random() * (high - low + 1)) + low;
+  return (value / scale).toFixed(precision);
+}
+
+function renderTemplatePreview(template, context = {}) {
+  const source = String(template ?? "");
+
+  return source.replace(/\[\[([A-Z0-9_.-]+)\]\]/g, (_, rawToken) => {
+    const numberMatch = rawToken.match(/^NUMBER_(-?\d+(?:\.\d+)?)_(-?\d+(?:\.\d+)?)$/);
+    if (numberMatch) {
+      return randomNumberInRange(numberMatch[1], numberMatch[2]);
+    }
+
+    if (rawToken.startsWith("NUMBER_")) {
+      return `[[${rawToken}]]`;
+    }
+
+    switch (rawToken) {
+      case "NAME": {
+        const name = randomName();
+        return `${name.first} ${name.last}`;
+      }
+      case "F_NAME":
+        return randomName().first;
+      case "L_NAME":
+        return randomName().last;
+      case "UUID":
+        return createUuid();
+      case "EMAIL": {
+        const first = randomName().first.toLowerCase();
+        const last = randomName().last.toLowerCase();
+        return `${first}.${last}@example.com`;
+      }
+      case "NOW_ISO":
+        return new Date().toISOString();
+      case "USERNAME":
+        return String(context.username ?? "");
+      default:
+        return `[[${rawToken}]]`;
+    }
+  });
+}
+
+function renderTemplateForCopy(template) {
+  return renderTemplatePreview(template, {
+    username: config.username
+  });
 }
 
 function escapeHtml(value) {
@@ -798,7 +939,7 @@ function buildApiPackageText(route) {
       lines.push(headersJson);
     }
     lines.push("Body:");
-    lines.push(responseExample.response_body || "(empty)");
+    lines.push(renderTemplateForCopy(responseExample.response_body) || "(empty)");
     lines.push("");
   });
 
@@ -815,7 +956,7 @@ function buildWsPackageText(event) {
     `Event: ${event.event_name}`,
     "",
     "Payload example:",
-    event.payload_template || "(empty)",
+    renderTemplateForCopy(event.payload_template) || "(empty)",
     "",
     "Client snippet:",
     `const socket = io("${socketUrl}");`,
@@ -860,7 +1001,6 @@ function renderApiResponsePreview(route, responseExample) {
                 : ""
             }
           </div>
-          <p class="text-sm text-ink/55">Copy the cURL command for this exact response example or copy only the body template.</p>
         </div>
 
         <div class="flex flex-wrap gap-2">
@@ -985,11 +1125,6 @@ function renderApiResponseEditor(responseExample, index, totalResponses) {
         <div class="flex items-start gap-4">
           <div class="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-accentSoft text-sm font-semibold text-accent">
             ${index + 1}
-          </div>
-
-          <div>
-            <p class="text-xs uppercase tracking-[0.24em] text-ink/45">Response example</p>
-            <p class="mt-2 text-sm leading-6 text-ink/65">Give this version a name like Success, Unauthorized, or Validation error.</p>
           </div>
         </div>
 
@@ -1749,7 +1884,7 @@ function copyApiExampleBody(id, responseName) {
     return;
   }
 
-  copyText(responseExample.response_body, "Response body copied.");
+  copyText(renderTemplateForCopy(responseExample.response_body), "Response body copied.");
 }
 
 function copyWsPayload(id) {
@@ -1758,7 +1893,7 @@ function copyWsPayload(id) {
     return;
   }
 
-  copyText(event.payload_template, "WebSocket payload copied.");
+  copyText(renderTemplateForCopy(event.payload_template), "WebSocket payload copied.");
 }
 
 function addApiResponseExample() {
