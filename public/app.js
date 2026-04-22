@@ -367,16 +367,11 @@ function ensureDraftDefaultResponse(draft) {
     return;
   }
 
-  let defaultFound = false;
+  const defaultIndex = draft.response_examples.findIndex((responseExample) => responseExample.is_default);
   draft.response_examples = draft.response_examples.map((responseExample, index) => {
-    const shouldBeDefault = !defaultFound && (responseExample.is_default || index === 0);
-    if (shouldBeDefault) {
-      defaultFound = true;
-    }
-
     return {
       ...responseExample,
-      is_default: shouldBeDefault
+      is_default: defaultIndex === -1 ? index === 0 : index === defaultIndex
     };
   });
 }
@@ -985,6 +980,10 @@ function renderApiResponsePreview(route, responseExample) {
     ? '<span class="response-chip default">Default</span>'
     : "";
   const headersJson = String(responseExample.headers_json || "").trim();
+  const exampleNameAttribute = `data-example-name="${escapeHtml(responseExample.name)}"`;
+  const defaultButton = responseExample.is_default
+    ? '<button type="button" class="secondary-button px-3 py-2 text-xs font-semibold opacity-60" disabled>Current default</button>'
+    : compactButton("Make default", "set-api-default-response", route.id, "", exampleNameAttribute);
 
   return `
     <article class="editor-card p-5">
@@ -1004,18 +1003,19 @@ function renderApiResponsePreview(route, responseExample) {
         </div>
 
         <div class="flex flex-wrap gap-2">
+          ${defaultButton}
           ${compactButton(
             "Copy cURL",
             "copy-api-example-curl",
             route.id,
             "",
-            `data-example-name="${escapeHtml(responseExample.name)}"`
+            exampleNameAttribute
           )}
           <button
             type="button"
             data-action="copy-api-example-body"
             data-id="${route.id}"
-            data-example-name="${escapeHtml(responseExample.name)}"
+            ${exampleNameAttribute}
             class="secondary-button px-3 py-2 text-xs font-semibold"
           >
             Copy body
@@ -1078,7 +1078,7 @@ function renderApiViewModal(route) {
                   <p class="mt-3 break-all font-mono text-sm leading-6 text-ink">${escapeHtml(fullUrl)}</p>
                   <p class="mt-4 text-sm leading-7 text-ink/65">
                     Use header <span class="font-mono text-xs">x-signaldock-example</span> or query
-                    <span class="font-mono text-xs">?__example=Response Name</span> to force any named response example for this endpoint.
+                    <span class="font-mono text-xs">?__example=Response Name</span> to force any named response example for this endpoint, or make one default below.
                   </p>
                 </div>
 
@@ -1783,6 +1783,48 @@ async function deleteApiRoute(id) {
   await loadBootstrap();
 }
 
+async function setApiDefaultResponse(id, responseName) {
+  const route = currentApiRoute(id);
+  if (!route) {
+    return;
+  }
+
+  const selectedExample = apiResponseExampleByName(route, responseName);
+  if (!selectedExample) {
+    setFeedback("Response example not found.", "error");
+    return;
+  }
+
+  if (selectedExample.is_default) {
+    setFeedback(`"${selectedExample.name}" is already the default response.`);
+    return;
+  }
+
+  const payload = {
+    method: route.method,
+    path: route.path,
+    responses: (route.response_examples || []).map((responseExample) => ({
+      name: responseExample.name.trim(),
+      statusCode: Number(responseExample.status_code),
+      contentType: String(responseExample.content_type || "").trim() || "application/json",
+      responseBody: responseExample.response_body,
+      headersJson: responseExample.headers_json,
+      delayMs: Number(responseExample.delay_ms || 0),
+      isDefault: responseExample.name === selectedExample.name
+    })),
+    isActive: Boolean(route.is_active),
+    notes: route.notes || ""
+  };
+
+  await apiFetch(`/dashboard/apis/${route.id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+
+  setFeedback(`Default response changed to "${selectedExample.name}".`);
+  await loadBootstrap();
+}
+
 async function deleteWsEvent(id) {
   const event = currentWsEvent(id);
   if (!event) {
@@ -1956,6 +1998,9 @@ function handleAction(button) {
       break;
     case "copy-api-example-body":
       copyApiExampleBody(id, exampleName);
+      break;
+    case "set-api-default-response":
+      setApiDefaultResponse(id, exampleName).catch((error) => setFeedback(error.message, "error"));
       break;
     case "add-api-response":
       addApiResponseExample();
